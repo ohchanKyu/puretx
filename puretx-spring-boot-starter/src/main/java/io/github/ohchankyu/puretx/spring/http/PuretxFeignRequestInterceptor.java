@@ -4,6 +4,7 @@ import feign.RequestInterceptor;
 import feign.RequestTemplate;
 import io.github.ohchankyu.puretx.PuretxEngine;
 import io.github.ohchankyu.puretx.ViolationType;
+import io.github.ohchankyu.puretx.spring.InstrumentationReport;
 
 /**
  * Catches Feign calls made inside a transaction.
@@ -15,8 +16,11 @@ public final class PuretxFeignRequestInterceptor implements RequestInterceptor {
 
     private final PuretxEngine engine;
 
-    public PuretxFeignRequestInterceptor(final PuretxEngine engine) {
+    public PuretxFeignRequestInterceptor(final PuretxEngine engine, final InstrumentationReport report) {
         this.engine = engine;
+        // Feign has no bean to post-process: registering this interceptor is the instrumentation.
+        report.watchingHttp();
+        report.instrumented("Feign");
     }
 
     @Override

@@ -13,6 +13,9 @@ public final class StubHttpServer implements AutoCloseable {
     private final HttpServer server;
     private volatile long delayMillis;
 
+    /** Status returned to every request. Set to 503 to make a retrying client actually retry. */
+    private volatile int status = 200;
+
     public StubHttpServer() {
         try {
             this.server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
@@ -28,8 +31,8 @@ public final class StubHttpServer implements AutoCloseable {
                     Thread.currentThread().interrupt();
                 }
             }
-            byte[] body = "ok".getBytes(StandardCharsets.UTF_8);
-            exchange.sendResponseHeaders(200, body.length);
+            final byte[] body = "ok".getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(status, body.length);
             try (OutputStream out = exchange.getResponseBody()) {
                 out.write(body);
             }
@@ -44,6 +47,10 @@ public final class StubHttpServer implements AutoCloseable {
 
     public String url(final String path) {
         return "http://127.0.0.1:" + server.getAddress().getPort() + path;
+    }
+
+    public void setStatus(final int status) {
+        this.status = status;
     }
 
     public void setDelayMillis(final long delayMillis) {

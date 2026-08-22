@@ -25,6 +25,7 @@ public final class PuretxRestTemplatePostProcessor implements BeanPostProcessor 
             final InstrumentationReport report) {
         this.interceptor = new PuretxClientHttpRequestInterceptor(engineSupplier);
         this.report = report;
+        report.watchingHttp();
     }
 
     @Override

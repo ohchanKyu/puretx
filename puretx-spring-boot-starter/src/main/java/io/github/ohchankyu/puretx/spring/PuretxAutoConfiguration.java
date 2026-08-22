@@ -106,9 +106,7 @@ public class PuretxAutoConfiguration {
         }
 
         @Bean
-        RestTemplateCustomizer puretxRestTemplateCustomizer(final PuretxClientHttpRequestInterceptor interceptor,
-                final InstrumentationReport report) {
-            report.watchingHttp();
+        RestTemplateCustomizer puretxRestTemplateCustomizer(final PuretxClientHttpRequestInterceptor interceptor) {
             return interceptor::installOn;
         }
 
@@ -145,7 +143,6 @@ public class PuretxAutoConfiguration {
         @Bean
         WebClientCustomizer puretxWebClientCustomizer(final PuretxExchangeFilterFunction filter,
                 final InstrumentationReport report) {
-            report.watchingHttp();
             return builder -> builder.filters(filters -> {
                 if (filters.stream().noneMatch(PuretxExchangeFilterFunction.class::isInstance)) {
                     filters.add(0, filter);
@@ -168,8 +165,9 @@ public class PuretxAutoConfiguration {
     static class FeignDetection {
 
         @Bean
-        PuretxFeignRequestInterceptor puretxFeignRequestInterceptor(final PuretxEngine engine) {
-            return new PuretxFeignRequestInterceptor(engine);
+        PuretxFeignRequestInterceptor puretxFeignRequestInterceptor(final PuretxEngine engine,
+                final InstrumentationReport report) {
+            return new PuretxFeignRequestInterceptor(engine, report);
         }
     }
 
