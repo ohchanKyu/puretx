@@ -1,0 +1,15 @@
+spring:
+  main:
+    banner-mode: off
+  datasource:
+    url: jdbc:h2:mem:puretx;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+
+puretx:
+  app-packages:
+    - com.acme.orders
+
+logging:
+  level:
+    root: warn
+    io.github.ohchankyu.puretx: warn
