@@ -11,6 +11,7 @@ import io.github.ohchankyu.puretx.spring.http.PuretxExchangeFilterFunction;
 import io.github.ohchankyu.puretx.spring.http.PuretxFeignRequestInterceptor;
 import io.github.ohchankyu.puretx.spring.http.PuretxRestClientPostProcessor;
 import io.github.ohchankyu.puretx.spring.http.PuretxRestTemplatePostProcessor;
+import io.github.ohchankyu.puretx.spring.http.PuretxWebClientPostProcessor;
 import io.github.ohchankyu.puretx.spring.kafka.PuretxProducerFactoryPostProcessor;
 import io.github.ohchankyu.puretx.spring.tx.PuretxTransactionManagerPostProcessor;
 import io.github.ohchankyu.puretx.spring.tx.SpringTransactionProbe;
@@ -151,6 +152,13 @@ public class PuretxAutoConfiguration {
                     report.instrumented("WebClient.Builder");
                 }
             });
+        }
+
+        /** Covers clients built by the static factory, which no customizer ever sees. */
+        @Bean
+        static PuretxWebClientPostProcessor puretxWebClientPostProcessor(
+                final ObjectProvider<PuretxEngine> engine, final ObjectProvider<InstrumentationReport> report) {
+            return new PuretxWebClientPostProcessor(lazy(engine), report.getObject());
         }
     }
 

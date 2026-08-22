@@ -3,7 +3,9 @@ package io.github.ohchankyu.puretx.spring.http;
 import io.github.ohchankyu.puretx.Detection;
 import io.github.ohchankyu.puretx.PuretxEngine;
 import io.github.ohchankyu.puretx.ViolationType;
+import java.util.function.Supplier;
 import org.springframework.core.Ordered;
+import org.springframework.util.function.SingletonSupplier;
 import org.springframework.web.reactive.function.client.ClientRequest;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
@@ -27,14 +29,20 @@ import reactor.core.publisher.Mono;
  */
 public final class PuretxExchangeFilterFunction implements ExchangeFilterFunction, Ordered {
 
-    private final PuretxEngine engine;
+    private final Supplier<PuretxEngine> engineSupplier;
 
     public PuretxExchangeFilterFunction(final PuretxEngine engine) {
-        this.engine = engine;
+        this(() -> engine);
+    }
+
+    /** Resolved on first use, for the bean post-processor that is built before the engine exists. */
+    public PuretxExchangeFilterFunction(final Supplier<PuretxEngine> engineSupplier) {
+        this.engineSupplier = SingletonSupplier.of(engineSupplier);
     }
 
     @Override
     public Mono<ClientResponse> filter(final ClientRequest request, final ExchangeFunction next) {
+        final PuretxEngine engine = engineSupplier.get();
         return Mono.defer(() -> {
             final Detection detection = engine.start(
                     ViolationType.HTTP_CALL, () -> "HTTP " + request.method() + " " + request.url());

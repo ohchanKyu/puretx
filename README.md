@@ -121,8 +121,8 @@ or wait for — the system it should not have been calling.
 | **Long transactions** | any transaction held open past `puretx.max-duration` |
 
 Clients are instrumented as beans, however they were built — `new RestTemplate()`, the static
-`RestClient.builder()`, or an injected builder all work. A client constructed inside a method and
-never registered as a bean is the one case puretx cannot reach.
+`RestClient.builder()`, `WebClient.create()`, or an injected builder all work. A client
+constructed inside a method and never registered as a bean is the one case puretx cannot reach.
 
 Only Spring's HTTP abstractions are covered. A vendor SDK that ships its own client — the Slack
 SDK, the AWS SDK — goes out over its own stack and is invisible here. `PuretxEngine.start`/`finish`
