@@ -57,8 +57,7 @@ final class PuretxProducerProxy implements InvocationHandler {
 
     private void inspect(final ProducerRecord<?, ?> record) {
         // isWatching is a couple of field reads; the resource lookup below is a ThreadLocal map
-        // hit, so it goes second. Whether a transaction is open at all stays the engine's call —
-        // asking TransactionSynchronizationManager here too would be a second source of truth.
+        // hit, so it goes second.
         if (!engine.isWatching(ViolationType.MESSAGE_PUBLISH) || isKafkaManagedTransaction()) {
             return;
         }
