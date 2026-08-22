@@ -15,16 +15,20 @@ public class OrderService {
     private final PaymentClient paymentClient;
     private final ReactivePaymentClient reactivePaymentClient;
     private final RestClientPaymentClient restClientPaymentClient;
+
+    private final RetryingPaymentClient retryingPaymentClient;
     private final JdbcTemplate jdbcTemplate;
     private final ApplicationEventPublisher events;
     private final InventoryService inventoryService;
 
     public OrderService(final PaymentClient paymentClient, final ReactivePaymentClient reactivePaymentClient,
-            final RestClientPaymentClient restClientPaymentClient, final JdbcTemplate jdbcTemplate,
+            final RestClientPaymentClient restClientPaymentClient,
+            final RetryingPaymentClient retryingPaymentClient, final JdbcTemplate jdbcTemplate,
             final ApplicationEventPublisher events, final InventoryService inventoryService) {
         this.paymentClient = paymentClient;
         this.reactivePaymentClient = reactivePaymentClient;
         this.restClientPaymentClient = restClientPaymentClient;
+        this.retryingPaymentClient = retryingPaymentClient;
         this.jdbcTemplate = jdbcTemplate;
         this.events = events;
         this.inventoryService = inventoryService;
@@ -42,6 +46,13 @@ public class OrderService {
     public void createOrderWithRestClient(final String url) {
         save();
         restClientPaymentClient.charge(url);
+    }
+
+    /** A call whose client retries internally: the transaction is held for the whole sequence. */
+    @Transactional
+    public void createOrderWithRetryingClient(final String url) {
+        save();
+        retryingPaymentClient.charge(url);
     }
 
     /** Reactive client, blocked on inside the transaction. Same problem, different API. */

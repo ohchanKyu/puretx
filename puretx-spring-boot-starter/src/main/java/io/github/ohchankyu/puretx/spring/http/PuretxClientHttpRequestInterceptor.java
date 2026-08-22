@@ -60,6 +60,13 @@ public final class PuretxClientHttpRequestInterceptor implements ClientHttpReque
         }
     }
 
+    /**
+     * Only consulted by {@code RestTemplate}: {@code InterceptingHttpAccessor.setInterceptors}
+     * sorts what it is given. Neither the list mutated by {@link #installOn} nor a
+     * {@code RestClient} chain is sorted, so being first there is {@code add(0, ...)}'s doing,
+     * not this. It is kept so that a template configured through {@code setInterceptors} still
+     * ends up with puretx outermost.
+     */
     @Override
     public int getOrder() {
         return Ordered.HIGHEST_PRECEDENCE;

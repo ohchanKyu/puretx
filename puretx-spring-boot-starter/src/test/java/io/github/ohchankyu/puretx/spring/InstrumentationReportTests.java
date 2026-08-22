@@ -89,6 +89,21 @@ class InstrumentationReportTests {
         });
     }
 
+    @Test
+    @DisplayName("an application whose only client is Feign is not warned at")
+    void countsFeignAsAnInstrumentedHttpClient() {
+        final List<ILoggingEvent> events = capture();
+        final InstrumentationReport report = new InstrumentationReport();
+        report.watchingHttp();
+        report.instrumented("Feign");
+        report.instrumented("transaction manager");
+
+        report.afterSingletonsInstantiated();
+
+        assertThat(events).singleElement().satisfies(event ->
+                assertThat(event.getLevel()).isEqualTo(Level.INFO));
+    }
+
     private static List<ILoggingEvent> capture() {
         final LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
         final ch.qos.logback.classic.Logger logger = context.getLogger(Puretx.LOGGER_NAME);

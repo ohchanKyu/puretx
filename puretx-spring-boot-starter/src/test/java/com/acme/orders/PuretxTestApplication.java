@@ -6,6 +6,7 @@ import org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Primary;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -27,6 +28,7 @@ public class PuretxTestApplication {
      * which is exactly the case puretx used to miss entirely.
      */
     @Bean
+    @Primary
     RestClient restClient() {
         return RestClient.builder().build();
     }
@@ -35,6 +37,14 @@ public class PuretxTestApplication {
      * The static factory again, for the same reason as {@link #restClient()}: no
      * {@code WebClientCustomizer} is consulted for a client built this way.
      */
+    /** A client that retries internally, the way production clients usually do. */
+    @Bean
+    RestClient retryingRestClient() {
+        return RestClient.builder()
+                .requestInterceptor(new RetryingPaymentClient.RetryInterceptor())
+                .build();
+    }
+
     @Bean
     WebClient webClient() {
         return WebClient.builder().build();

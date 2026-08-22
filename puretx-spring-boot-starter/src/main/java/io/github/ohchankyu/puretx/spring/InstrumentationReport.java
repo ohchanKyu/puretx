@@ -26,7 +26,7 @@ public final class InstrumentationReport implements SmartInitializingSingleton {
     private static final Logger log = LoggerFactory.getLogger(Puretx.LOGGER_NAME);
 
     /** Kinds that carry an outbound call, as opposed to opening the transaction around one. */
-    private static final String[] HTTP_KINDS = {"RestTemplate", "RestClient", "WebClient", "WebClient.Builder"};
+    private static final String[] HTTP_KINDS = {"RestTemplate", "RestClient", "WebClient", "WebClient.Builder", "Feign"};
 
     private static final String TRANSACTION_MANAGER = "transaction manager";
 
