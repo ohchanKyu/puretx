@@ -1,0 +1,56 @@
+package io.github.ohchankyu.puretx.spring.kafka;
+
+import io.github.ohchankyu.puretx.PuretxEngine;
+import java.util.function.Supplier;
+import org.apache.kafka.clients.producer.Producer;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.config.BeanPostProcessor;
+import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.core.ProducerPostProcessor;
+import org.springframework.util.function.SingletonSupplier;
+
+/**
+ * Registers puretx's producer wrapper on every {@code ProducerFactory} in the context.
+ *
+ * <p>Uses spring-kafka's own extension point, so the factory bean keeps its type and everything
+ * built on top of it — {@code KafkaTemplate}, {@code ReplyingKafkaTemplate}, a hand-rolled producer —
+ * is covered without any of them being proxied.
+ */
+public final class PuretxProducerFactoryPostProcessor implements BeanPostProcessor {
+
+    private final Supplier<PuretxEngine> engineSupplier;
+
+    public PuretxProducerFactoryPostProcessor(final Supplier<PuretxEngine> engineSupplier) {
+        this.engineSupplier = SingletonSupplier.of(engineSupplier);
+    }
+
+    @Override
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public Object postProcessAfterInitialization(final Object bean, final String beanName) throws BeansException {
+        if (!(bean instanceof ProducerFactory<?, ?> factory)) {
+            return bean;
+        }
+        if (factory.getPostProcessors().stream().noneMatch(PuretxProducerPostProcessor.class::isInstance)) {
+            ((ProducerFactory) factory).addPostProcessor(
+                    new PuretxProducerPostProcessor(engineSupplier, factory));
+        }
+        return bean;
+    }
+
+    /** Applied by the factory to every producer it creates. */
+    static final class PuretxProducerPostProcessor implements ProducerPostProcessor<Object, Object> {
+
+        private final Supplier<PuretxEngine> engineSupplier;
+        private final ProducerFactory<?, ?> factory;
+
+        PuretxProducerPostProcessor(final Supplier<PuretxEngine> engineSupplier, final ProducerFactory<?, ?> factory) {
+            this.engineSupplier = engineSupplier;
+            this.factory = factory;
+        }
+
+        @Override
+        public Producer<Object, Object> apply(final Producer<Object, Object> producer) {
+            return PuretxProducerProxy.wrap(producer, engineSupplier.get(), factory);
+        }
+    }
+}
