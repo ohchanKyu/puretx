@@ -203,6 +203,16 @@ Violations are also available programmatically, which is useful for assertions:
 assertThat(Puretx.violations()).isEmpty();
 ```
 
+`Puretx.violations()` reads one engine, and each Spring context that starts replaces it. If your
+suite runs test classes in parallel across several contexts, inject the engine instead — it is
+always the one belonging to the context under test:
+
+```java
+@Autowired PuretxEngine engine;
+
+assertThat(engine.store().all()).isEmpty();
+```
+
 and for sending them somewhere of your own — register a `ViolationListener` bean and puretx will
 call it for every violation.
 

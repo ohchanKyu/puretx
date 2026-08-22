@@ -1,9 +1,12 @@
 package io.github.ohchankyu.puretx.spring.kafka;
 
+import io.github.ohchankyu.puretx.Puretx;
 import io.github.ohchankyu.puretx.PuretxEngine;
 import io.github.ohchankyu.puretx.spring.InstrumentationReport;
 import java.util.function.Supplier;
 import org.apache.kafka.clients.producer.Producer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.kafka.core.ProducerFactory;
@@ -18,6 +21,8 @@ import org.springframework.util.function.SingletonSupplier;
  * is covered without any of them being proxied.
  */
 public final class PuretxProducerFactoryPostProcessor implements BeanPostProcessor {
+
+    private static final Logger log = LoggerFactory.getLogger(Puretx.LOGGER_NAME);
 
     private final Supplier<PuretxEngine> engineSupplier;
 
@@ -35,10 +40,22 @@ public final class PuretxProducerFactoryPostProcessor implements BeanPostProcess
         if (!(bean instanceof ProducerFactory<?, ?> factory)) {
             return bean;
         }
-        if (factory.getPostProcessors().stream().noneMatch(PuretxProducerPostProcessor.class::isInstance)) {
-            ((ProducerFactory) factory).addPostProcessor(
-                    new PuretxProducerPostProcessor(engineSupplier, factory));
+        if (factory.getPostProcessors().stream().anyMatch(PuretxProducerPostProcessor.class::isInstance)) {
+            return bean;
+        }
+        final PuretxProducerPostProcessor added = new PuretxProducerPostProcessor(engineSupplier, factory);
+        ((ProducerFactory) factory).addPostProcessor(added);
+
+        // addPostProcessor and getPostProcessors are both interface default methods with empty
+        // bodies, so a ProducerFactory that does not override them accepts the registration and
+        // discards it. Counting it as instrumented would be the exact failure InstrumentationReport
+        // exists to rule out: believing something is watched when nothing is.
+        if (factory.getPostProcessors().contains(added)) {
             report.instrumented("Kafka producer factory");
+        } else {
+            log.warn("[puretx] {} does not support producer post-processors, so what it publishes "
+                    + "is not seen. Only DefaultKafkaProducerFactory and subclasses can be "
+                    + "instrumented.", bean.getClass().getName());
         }
         return bean;
     }

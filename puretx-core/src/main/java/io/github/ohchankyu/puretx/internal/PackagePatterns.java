@@ -23,7 +23,14 @@ public final class PackagePatterns {
     /** {@code ?} — exactly one character. */
     private static final String ANY_CHARACTER = ".";
 
-    /** Appended to a wildcard-free pattern so it also covers everything below it. */
+    /**
+     * Appended to every pattern so it also covers everything below what it names.
+     *
+     * <p>Load-bearing for transaction names: Spring calls a transaction
+     * {@code com.acme.OrderService.createOrder}, one segment longer than the class an ignore
+     * pattern is written against. Without this, a pattern would match the call site and not the
+     * transaction — and only for some patterns, which is worse than not working at all.
+     */
     private static final String SUBPACKAGE_SUFFIX = "(\\..*)?";
 
     /** Regex fragments are longer than the characters they replace; this avoids a resize or two. */
@@ -95,6 +102,8 @@ public final class PackagePatterns {
             sb.append(Pattern.quote(String.valueOf(c)));
             i++;
         }
-        return sb.toString();
+        // The wildcard-free branch above already ends this way. Leaving it off here is what made
+        // "com.acme.*.OrderService" miss transaction names while "com.acme.orders" matched them.
+        return sb.append(SUBPACKAGE_SUFFIX).toString();
     }
 }

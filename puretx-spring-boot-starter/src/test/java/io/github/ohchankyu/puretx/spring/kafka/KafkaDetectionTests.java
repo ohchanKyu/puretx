@@ -3,7 +3,12 @@ package io.github.ohchankyu.puretx.spring.kafka;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import io.github.ohchankyu.puretx.ImpureTransactionException;
+import io.github.ohchankyu.puretx.Puretx;
 import io.github.ohchankyu.puretx.PuretxEngine;
 import io.github.ohchankyu.puretx.PuretxMode;
 import io.github.ohchankyu.puretx.PuretxSettings;
@@ -21,7 +26,9 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
+import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
@@ -106,6 +113,43 @@ class KafkaDetectionTests {
         postProcessor.postProcessAfterInitialization(factory, "kafkaProducerFactory");
 
         assertThat(factory.getPostProcessors()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("a factory that ignores post-processors is reported as unwatched, not as instrumented")
+    void doesNotClaimToInstrumentAFactoryThatIgnoresThem() {
+        final List<ILoggingEvent> events = captureLog();
+        final PuretxEngine engine = engine(PuretxMode.WARN, TransactionProbe.NONE);
+        final InstrumentationReport report = new InstrumentationReport();
+        // Overrides nothing: ProducerFactory's default addPostProcessor has an empty body and
+        // getPostProcessors returns an empty list, so the registration silently evaporates.
+        final ProducerFactory<String, String> unsupported = new ProducerFactory<>() {
+            @Override
+            public Producer<String, String> createProducer() {
+                return null;
+            }
+        };
+
+        new PuretxProducerFactoryPostProcessor(() -> engine, report)
+                .postProcessAfterInitialization(unsupported, "customProducerFactory");
+        report.instrumented("transaction manager");
+        report.afterSingletonsInstantiated();
+
+        assertThat(events).extracting(ILoggingEvent::getFormattedMessage)
+                .anySatisfy(message -> assertThat(message)
+                        .contains("does not support producer post-processors"))
+                .noneSatisfy(message -> assertThat(message).contains("Kafka producer factory"));
+    }
+
+    private static List<ILoggingEvent> captureLog() {
+        final LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
+        final ch.qos.logback.classic.Logger logger = context.getLogger(Puretx.LOGGER_NAME);
+        final ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.detachAndStopAllAppenders();
+        logger.addAppender(appender);
+        logger.setLevel(Level.INFO);
+        return appender.list;
     }
 
     private static PuretxEngine engine(final PuretxMode mode, final TransactionProbe probe) {
