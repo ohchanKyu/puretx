@@ -9,6 +9,7 @@ import io.github.ohchankyu.puretx.ViolationListener;
 import io.github.ohchankyu.puretx.spring.http.PuretxClientHttpRequestInterceptor;
 import io.github.ohchankyu.puretx.spring.http.PuretxExchangeFilterFunction;
 import io.github.ohchankyu.puretx.spring.http.PuretxFeignRequestInterceptor;
+import io.github.ohchankyu.puretx.spring.http.PuretxRestClientPostProcessor;
 import io.github.ohchankyu.puretx.spring.http.PuretxRestTemplatePostProcessor;
 import io.github.ohchankyu.puretx.spring.kafka.PuretxProducerFactoryPostProcessor;
 import io.github.ohchankyu.puretx.spring.tx.PuretxTransactionManagerPostProcessor;
@@ -22,7 +23,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.boot.web.client.RestClientCustomizer;
 import org.springframework.boot.web.client.RestTemplateCustomizer;
 import org.springframework.boot.web.reactive.function.client.WebClientCustomizer;
 import org.springframework.context.annotation.Bean;
@@ -76,9 +76,14 @@ public class PuretxAutoConfiguration {
     }
 
     @Bean
+    public InstrumentationReport puretxInstrumentationReport() {
+        return new InstrumentationReport();
+    }
+
+    @Bean
     public static PuretxTransactionManagerPostProcessor puretxTransactionManagerPostProcessor(
-            final ObjectProvider<PuretxEngine> engine) {
-        return new PuretxTransactionManagerPostProcessor(lazy(engine));
+            final ObjectProvider<PuretxEngine> engine, final ObjectProvider<InstrumentationReport> report) {
+        return new PuretxTransactionManagerPostProcessor(lazy(engine), report.getObject());
     }
 
     /**
@@ -100,14 +105,17 @@ public class PuretxAutoConfiguration {
         }
 
         @Bean
-        RestTemplateCustomizer puretxRestTemplateCustomizer(final PuretxClientHttpRequestInterceptor interceptor) {
+        RestTemplateCustomizer puretxRestTemplateCustomizer(final PuretxClientHttpRequestInterceptor interceptor,
+                final InstrumentationReport report) {
+            report.watchingHttp();
             return interceptor::installOn;
         }
 
         /** Covers {@code new RestTemplate()} beans, which never see the builder's customizers. */
         @Bean
-        static PuretxRestTemplatePostProcessor puretxRestTemplatePostProcessor(final ObjectProvider<PuretxEngine> engine) {
-            return new PuretxRestTemplatePostProcessor(lazy(engine));
+        static PuretxRestTemplatePostProcessor puretxRestTemplatePostProcessor(
+                final ObjectProvider<PuretxEngine> engine, final ObjectProvider<InstrumentationReport> report) {
+            return new PuretxRestTemplatePostProcessor(lazy(engine), report.getObject());
         }
     }
 
@@ -117,8 +125,9 @@ public class PuretxAutoConfiguration {
     static class RestClientDetection {
 
         @Bean
-        RestClientCustomizer puretxRestClientCustomizer(final PuretxClientHttpRequestInterceptor interceptor) {
-            return builder -> builder.requestInterceptor(interceptor);
+        static PuretxRestClientPostProcessor puretxRestClientPostProcessor(
+                final ObjectProvider<PuretxEngine> engine, final ObjectProvider<InstrumentationReport> report) {
+            return new PuretxRestClientPostProcessor(lazy(engine), report.getObject());
         }
     }
 
@@ -133,10 +142,13 @@ public class PuretxAutoConfiguration {
         }
 
         @Bean
-        WebClientCustomizer puretxWebClientCustomizer(final PuretxExchangeFilterFunction filter) {
+        WebClientCustomizer puretxWebClientCustomizer(final PuretxExchangeFilterFunction filter,
+                final InstrumentationReport report) {
+            report.watchingHttp();
             return builder -> builder.filters(filters -> {
                 if (filters.stream().noneMatch(PuretxExchangeFilterFunction.class::isInstance)) {
                     filters.add(0, filter);
+                    report.instrumented("WebClient.Builder");
                 }
             });
         }
@@ -161,8 +173,8 @@ public class PuretxAutoConfiguration {
 
         @Bean
         static PuretxProducerFactoryPostProcessor puretxProducerFactoryPostProcessor(
-                final ObjectProvider<PuretxEngine> engine) {
-            return new PuretxProducerFactoryPostProcessor(lazy(engine));
+                final ObjectProvider<PuretxEngine> engine, final ObjectProvider<InstrumentationReport> report) {
+            return new PuretxProducerFactoryPostProcessor(lazy(engine), report.getObject());
         }
     }
 }

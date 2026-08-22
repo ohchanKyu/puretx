@@ -21,9 +21,14 @@ public class PuretxTestApplication {
         return builder.build();
     }
 
+    /**
+     * Built the way applications actually build one: the static factory, not the injected
+     * {@code RestClient.Builder} bean. No {@code RestClientCustomizer} is ever consulted for this,
+     * which is exactly the case puretx used to miss entirely.
+     */
     @Bean
-    RestClient restClient(final RestClient.Builder builder) {
-        return builder.build();
+    RestClient restClient() {
+        return RestClient.builder().build();
     }
 
     @Bean

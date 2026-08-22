@@ -10,6 +10,7 @@ import io.github.ohchankyu.puretx.PuretxSettings;
 import io.github.ohchankyu.puretx.TransactionInfo;
 import io.github.ohchankyu.puretx.TransactionProbe;
 import io.github.ohchankyu.puretx.ViolationType;
+import io.github.ohchankyu.puretx.spring.InstrumentationReport;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.List;
@@ -99,7 +100,7 @@ class KafkaDetectionTests {
         DefaultKafkaProducerFactory<String, String> factory =
                 new DefaultKafkaProducerFactory<>(Map.of("bootstrap.servers", "localhost:9092"));
         PuretxProducerFactoryPostProcessor postProcessor =
-                new PuretxProducerFactoryPostProcessor(() -> engine);
+                new PuretxProducerFactoryPostProcessor(() -> engine, new InstrumentationReport());
 
         postProcessor.postProcessAfterInitialization(factory, "kafkaProducerFactory");
         postProcessor.postProcessAfterInitialization(factory, "kafkaProducerFactory");
