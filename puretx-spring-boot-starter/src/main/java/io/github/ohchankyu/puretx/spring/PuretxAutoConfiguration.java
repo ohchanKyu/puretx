@@ -69,9 +69,6 @@ public class PuretxAutoConfiguration {
         // Makes Puretx.suppress(...) and Puretx.violations() work without injecting anything.
         Puretx.setEngine(engine);
 
-        // Applications never reference puretx from their own code, so a missing dependency or an
-        // unmet condition would leave everything working and puretx silently absent. Saying so once
-        // is the only way to tell "nothing to report" apart from "never switched on".
         log.info("[puretx] {}", engine.settings().describe());
         return engine;
     }

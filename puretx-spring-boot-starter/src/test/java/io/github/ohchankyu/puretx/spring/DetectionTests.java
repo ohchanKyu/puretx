@@ -60,7 +60,6 @@ class DetectionTests {
         // PaymentClient is a helper between OrderService and RestTemplate: this indirection is
         // precisely what a class-level dependency rule cannot follow.
         assertThat(violation.origin().getClassName()).isEqualTo(PaymentClient.class.getName());
-        // The path is application frames only: the helper, then the service that called it.
         assertThat(violation.callPath()).extracting(StackTraceElement::getClassName)
                 .containsExactly(PaymentClient.class.getName(), OrderService.class.getName());
     }

@@ -119,7 +119,6 @@ public final class PuretxEngine {
         final Detection detection =
                 new Detection(type, summary.get(), tx, capture.origin(), capture.callPath());
         if (s.mode() == PuretxMode.FAIL) {
-            // Report before the call happens: in a test we would rather not make it at all.
             throw new ImpureTransactionException(
                     record(detection.toViolation(Violation.UNKNOWN_DURATION, Instant.now())));
         }

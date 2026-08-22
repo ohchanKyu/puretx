@@ -46,10 +46,8 @@ public final class PuretxProducerFactoryPostProcessor implements BeanPostProcess
         final PuretxProducerPostProcessor added = new PuretxProducerPostProcessor(engineSupplier, factory);
         ((ProducerFactory) factory).addPostProcessor(added);
 
-        // addPostProcessor and getPostProcessors are both interface default methods with empty
-        // bodies, so a ProducerFactory that does not override them accepts the registration and
-        // discards it. Counting it as instrumented would be the exact failure InstrumentationReport
-        // exists to rule out: believing something is watched when nothing is.
+        // addPostProcessor and getPostProcessors are interface defaults with empty bodies, so a
+        // factory that overrides neither accepts the registration and discards it.
         if (factory.getPostProcessors().contains(added)) {
             report.instrumented("Kafka producer factory");
         } else {

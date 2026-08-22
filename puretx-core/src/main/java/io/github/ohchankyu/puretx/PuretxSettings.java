@@ -21,7 +21,6 @@ public final class PuretxSettings {
     private final boolean detectInTestTransactions;
     private final Set<ViolationType> detectors;
 
-    // Derived once: the settings are immutable, and both are read on the per-transaction path.
     private final long maxDurationMillis;
     private final boolean durationCheckEnabled;
 

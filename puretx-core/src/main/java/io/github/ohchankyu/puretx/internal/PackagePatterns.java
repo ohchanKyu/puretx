@@ -102,8 +102,6 @@ public final class PackagePatterns {
             sb.append(Pattern.quote(String.valueOf(c)));
             i++;
         }
-        // The wildcard-free branch above already ends this way. Leaving it off here is what made
-        // "com.acme.*.OrderService" miss transaction names while "com.acme.orders" matched them.
         return sb.append(SUBPACKAGE_SUFFIX).toString();
     }
 }
