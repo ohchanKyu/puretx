@@ -17,7 +17,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 @SpringBootTest(
         classes = PuretxTestApplication.class,
         webEnvironment = SpringBootTest.WebEnvironment.NONE,
-        properties = "puretx.max-duration=100ms")
+        properties = "puretx.max-duration=500ms")
 class TransactionDurationTests {
 
     @Autowired
@@ -34,20 +34,20 @@ class TransactionDurationTests {
     @Test
     @DisplayName("a transaction held past the threshold is reported once, at commit")
     void reportsTransactionsOverTheThreshold() {
-        orderService.slowOrder(250);
+        orderService.slowOrder(900);
 
         assertThat(engine.store().all()).singleElement().satisfies(violation -> {
             assertThat(violation.type()).isEqualTo(ViolationType.LONG_TRANSACTION);
             assertThat(violation.transaction().displayName()).isEqualTo("OrderService.slowOrder");
-            assertThat(violation.durationMillis()).isGreaterThanOrEqualTo(250);
-            assertThat(violation.summary()).isEqualTo("transaction held past the 100ms limit");
+            assertThat(violation.durationMillis()).isGreaterThanOrEqualTo(900);
+            assertThat(violation.summary()).isEqualTo("transaction held past the 500ms limit");
         });
     }
 
     @Test
     @DisplayName("a rolled-back transaction is still reported, without piling an exception onto the failure")
     void reportsRolledBackTransactionsWithoutThrowing() {
-        assertThatThrownBy(() -> orderService.failingSlowOrder(250))
+        assertThatThrownBy(() -> orderService.failingSlowOrder(900))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("boom");
 
@@ -55,6 +55,8 @@ class TransactionDurationTests {
                 assertThat(violation.type()).isEqualTo(ViolationType.LONG_TRANSACTION));
     }
 
+    // A 400ms margin either side of the threshold, because a cold CI runner acquiring its first
+    // JDBC connection is slower than anything this test is actually trying to measure.
     @Test
     @DisplayName("a transaction under the threshold stays silent")
     void ignoresFastTransactions() {

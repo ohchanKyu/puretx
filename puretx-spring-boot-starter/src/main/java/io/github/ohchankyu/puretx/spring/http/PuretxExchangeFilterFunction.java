@@ -20,6 +20,10 @@ import reactor.core.publisher.Mono;
  *
  * <p>A call assembled inside a transaction but subscribed later, elsewhere, is not reported:
  * by then the transaction is genuinely no longer being held.
+ *
+ * <p>Detection is synchronous — {@code FAIL} still throws on the caller's thread — but the
+ * violation is <em>recorded</em> when the exchange terminates, which is whichever thread the
+ * client completes on. A blocking caller can therefore return a moment before the report lands.
  */
 public final class PuretxExchangeFilterFunction implements ExchangeFilterFunction, Ordered {
 
