@@ -76,6 +76,20 @@ an HTTP call 15ms into a transaction, and it took 431ms" is the sentence that ge
 The `path` is application frames only — the chain of your own code that led to the call, even when
 the call itself happens several library frames deeper.
 
+### Is it actually on?
+
+puretx says so at startup, twice — what it is watching for, and what it managed to attach itself to:
+
+```
+[puretx] watching transactions — mode=WARN, max-duration=3s, detectors=[http, messaging, duration]
+[puretx] instrumented 6 RestClient, 1 RestTemplate, 1 transaction manager
+```
+
+The second line is the one that matters. A detection library that reports nothing is ambiguous —
+it could mean your code is clean, or it could mean nothing was ever wired up. If puretx cannot see
+any transaction, or is watching for HTTP calls but reached no client, it says so at WARN rather
+than leaving you to guess.
+
 ## Using it in CI
 
 The pattern that works on an existing codebase:

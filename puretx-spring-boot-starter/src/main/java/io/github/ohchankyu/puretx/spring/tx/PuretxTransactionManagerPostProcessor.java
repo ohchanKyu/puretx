@@ -1,6 +1,7 @@
 package io.github.ohchankyu.puretx.spring.tx;
 
 import io.github.ohchankyu.puretx.PuretxEngine;
+import io.github.ohchankyu.puretx.spring.InstrumentationReport;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
@@ -24,8 +25,12 @@ public final class PuretxTransactionManagerPostProcessor implements BeanPostProc
 
     private final Supplier<PuretxEngine> engineSupplier;
 
-    public PuretxTransactionManagerPostProcessor(final Supplier<PuretxEngine> engineSupplier) {
+    private final InstrumentationReport report;
+
+    public PuretxTransactionManagerPostProcessor(final Supplier<PuretxEngine> engineSupplier,
+            final InstrumentationReport report) {
         this.engineSupplier = SingletonSupplier.of(engineSupplier);
+        this.report = report;
     }
 
     @Override
@@ -43,6 +48,7 @@ public final class PuretxTransactionManagerPostProcessor implements BeanPostProc
         listeners.add(new PuretxTransactionExecutionListener(
                 engineSupplier, manager.getClass().getSimpleName()));
         manager.setTransactionExecutionListeners(listeners);
+        report.instrumented("transaction manager");
         return bean;
     }
 

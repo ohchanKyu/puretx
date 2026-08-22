@@ -1,6 +1,7 @@
 package io.github.ohchankyu.puretx.spring.http;
 
 import io.github.ohchankyu.puretx.PuretxEngine;
+import io.github.ohchankyu.puretx.spring.InstrumentationReport;
 import java.util.function.Supplier;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.BeanPostProcessor;
@@ -25,13 +26,18 @@ public final class PuretxRestClientPostProcessor implements BeanPostProcessor {
 
     private final PuretxClientHttpRequestInterceptor interceptor;
 
-    public PuretxRestClientPostProcessor(final Supplier<PuretxEngine> engineSupplier) {
+    private final InstrumentationReport report;
+
+    public PuretxRestClientPostProcessor(final Supplier<PuretxEngine> engineSupplier,
+            final InstrumentationReport report) {
         this.interceptor = new PuretxClientHttpRequestInterceptor(engineSupplier);
+        this.report = report;
     }
 
     @Override
     public Object postProcessAfterInitialization(final Object bean, final String beanName) throws BeansException {
         if (bean instanceof RestClient restClient) {
+            report.instrumented("RestClient");
             return restClient.mutate().requestInterceptor(interceptor).build();
         }
         return bean;

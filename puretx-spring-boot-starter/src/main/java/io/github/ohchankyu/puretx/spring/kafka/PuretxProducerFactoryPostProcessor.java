@@ -1,6 +1,7 @@
 package io.github.ohchankyu.puretx.spring.kafka;
 
 import io.github.ohchankyu.puretx.PuretxEngine;
+import io.github.ohchankyu.puretx.spring.InstrumentationReport;
 import java.util.function.Supplier;
 import org.apache.kafka.clients.producer.Producer;
 import org.springframework.beans.BeansException;
@@ -20,8 +21,12 @@ public final class PuretxProducerFactoryPostProcessor implements BeanPostProcess
 
     private final Supplier<PuretxEngine> engineSupplier;
 
-    public PuretxProducerFactoryPostProcessor(final Supplier<PuretxEngine> engineSupplier) {
+    private final InstrumentationReport report;
+
+    public PuretxProducerFactoryPostProcessor(final Supplier<PuretxEngine> engineSupplier,
+            final InstrumentationReport report) {
         this.engineSupplier = SingletonSupplier.of(engineSupplier);
+        this.report = report;
     }
 
     @Override
@@ -33,6 +38,7 @@ public final class PuretxProducerFactoryPostProcessor implements BeanPostProcess
         if (factory.getPostProcessors().stream().noneMatch(PuretxProducerPostProcessor.class::isInstance)) {
             ((ProducerFactory) factory).addPostProcessor(
                     new PuretxProducerPostProcessor(engineSupplier, factory));
+            report.instrumented("Kafka producer factory");
         }
         return bean;
     }
