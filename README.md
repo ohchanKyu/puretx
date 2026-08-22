@@ -42,7 +42,7 @@ git clone https://github.com/ohchanKyu/puretx && cd puretx && ./gradlew publishT
 
 ```kotlin
 repositories { mavenLocal() }
-implementation("io.github.ohchankyu:puretx-spring-boot-starter:0.1.0")
+implementation("io.github.ohchankyu:puretx-spring-boot-starter:0.1.0-SNAPSHOT")
 ```
 
 That is the whole setup. puretx defaults to `WARN`, instruments the transaction managers and HTTP
