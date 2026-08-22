@@ -69,7 +69,18 @@ public final class Puretx {
         return Suppressions.active();
     }
 
-    /** The most recent violations, oldest first. Bounded by {@code puretx.record-limit}. */
+    /**
+     * The most recent violations, oldest first. Bounded by {@code puretx.record-limit}.
+     *
+     * <p><strong>One engine, globally.</strong> Each Spring context that starts installs its own,
+     * and the last one to start wins. Interceptors keep hold of the engine from the context that
+     * built them, so with several contexts alive at once — a test suite running classes in
+     * parallel, most commonly — a violation can be recorded in one store while this method reads
+     * another, and the assertion quietly sees nothing.
+     *
+     * <p>In a test, inject the {@code PuretxEngine} bean and read {@code engine.store()} instead.
+     * That is always the engine belonging to the context under test.
+     */
     public static List<Violation> violations() {
         return engine.store().all();
     }
