@@ -213,6 +213,20 @@ always the one belonging to the context under test:
 assertThat(engine.store().all()).isEmpty();
 ```
 
+**Asserting on a WebClient call needs a wait.** Detection is synchronous — `FAIL` throws on the
+calling thread like everywhere else — but the violation is *recorded* when the exchange
+terminates, on whichever thread the client completes on. A blocking caller can return a moment
+before the report lands, so an assertion made the instant `block()` returns is a race that happens
+to pass on a fast loopback:
+
+```java
+await().atMost(Duration.ofSeconds(5))
+        .untilAsserted(() -> assertThat(engine.store().all()).hasSize(1));
+```
+
+Nothing else needs this. `RestTemplate`, `RestClient`, Feign and Kafka all record on the calling
+thread before the call returns.
+
 and for sending them somewhere of your own — register a `ViolationListener` bean and puretx will
 call it for every violation.
 
