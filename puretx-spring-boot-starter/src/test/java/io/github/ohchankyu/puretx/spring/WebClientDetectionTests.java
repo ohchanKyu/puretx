@@ -54,6 +54,15 @@ class WebClientDetectionTests {
     }
 
     @Test
+    @DisplayName("the filter is added exactly once, so a call is not reported twice")
+    void reportsEachCallOnce() {
+        orderService.createOrderWithWebClient(server.url());
+
+        await().atMost(Duration.ofSeconds(5))
+                .untilAsserted(() -> assertThat(engine.store().total()).isEqualTo(1));
+    }
+
+    @Test
     @DisplayName("a WebClient call outside a transaction is not")
     void ignoresWebClientCallsOutsideTransaction() {
         orderService.createOrderWithWebClientOutsideTransaction(server.url());

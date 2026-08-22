@@ -31,9 +31,13 @@ public class PuretxTestApplication {
         return RestClient.builder().build();
     }
 
+    /**
+     * The static factory again, for the same reason as {@link #restClient()}: no
+     * {@code WebClientCustomizer} is consulted for a client built this way.
+     */
     @Bean
-    WebClient webClient(final WebClient.Builder builder) {
-        return builder.build();
+    WebClient webClient() {
+        return WebClient.builder().build();
     }
 
     @Bean
