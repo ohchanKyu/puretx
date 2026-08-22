@@ -48,7 +48,10 @@ public final class PuretxTransactionManagerPostProcessor implements BeanPostProc
         listeners.add(new PuretxTransactionExecutionListener(
                 engineSupplier, manager.getClass().getSimpleName()));
         manager.setTransactionExecutionListeners(listeners);
-        report.instrumented("transaction manager");
+        // setTransactionExecutionListeners replaces the list wholesale, so anything that calls it
+        // later drops puretx's listener without telling anyone.
+        report.instrumented("transaction manager", () -> manager.getTransactionExecutionListeners().stream()
+                .anyMatch(PuretxTransactionExecutionListener.class::isInstance));
         return bean;
     }
 

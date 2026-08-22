@@ -39,6 +39,19 @@ public record TransactionInfo(
         return elapsedMillis >= 0;
     }
 
+    /**
+     * The class that declared the transactional method: {@code com.acme.OrderService} out of
+     * {@code com.acme.OrderService.createOrder}.
+     *
+     * <p>An ignore pattern is written against a class, and a transaction name is one segment
+     * longer than one. Stripping the method here is what lets a pattern be matched as written,
+     * instead of every pattern having to be loosened to tolerate the extra segment.
+     */
+    public String declaringTypeName() {
+        final int method = name.lastIndexOf(StringUtils.DOT);
+        return method <= 0 ? name : name.substring(0, method);
+    }
+
     /** {@code com.acme.OrderService.createOrder} rendered as {@code OrderService.createOrder}. */
     public String displayName() {
         if (StringUtils.isEmpty(name)) {

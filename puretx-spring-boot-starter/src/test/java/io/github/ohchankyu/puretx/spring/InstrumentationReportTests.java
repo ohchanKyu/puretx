@@ -8,6 +8,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import io.github.ohchankyu.puretx.Puretx;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
@@ -102,6 +103,26 @@ class InstrumentationReportTests {
 
         assertThat(events).singleElement().satisfies(event ->
                 assertThat(event.getLevel()).isEqualTo(Level.INFO));
+    }
+
+    @Test
+    @DisplayName("a registration that was undone before startup finished is not counted")
+    void doesNotCountAnInstrumentationThatWasSinceRemoved() {
+        final List<ILoggingEvent> events = capture();
+        final InstrumentationReport report = new InstrumentationReport();
+        final AtomicBoolean stillAttached = new AtomicBoolean(true);
+        report.instrumented("transaction manager", stillAttached::get);
+        report.instrumented("RestTemplate");
+        report.watchingHttp();
+
+        // Something replaced the listener list after puretx added itself to it.
+        stillAttached.set(false);
+        report.afterSingletonsInstantiated();
+
+        assertThat(events).singleElement().satisfies(event -> {
+            assertThat(event.getLevel()).isEqualTo(Level.WARN);
+            assertThat(event.getFormattedMessage()).contains("no transaction manager");
+        });
     }
 
     private static List<ILoggingEvent> capture() {

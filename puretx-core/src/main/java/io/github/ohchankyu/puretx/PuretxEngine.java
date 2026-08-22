@@ -107,7 +107,7 @@ public final class PuretxEngine {
         // Cheap half of the ignore check first: a transaction whose name is ignored should never
         // pay for a stack walk.
         final PackagePatterns patterns = ignore;
-        if (tx.hasName() && patterns.matches(tx.name())) {
+        if (tx.hasName() && (patterns.matches(tx.name()) || patterns.matches(tx.declaringTypeName()))) {
             return null;
         }
         final StackCapture.Result capture = type.reportsCallSite()

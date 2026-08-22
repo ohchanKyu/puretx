@@ -24,12 +24,11 @@ public final class PackagePatterns {
     private static final String ANY_CHARACTER = ".";
 
     /**
-     * Appended to every pattern so it also covers everything below what it names.
+     * Appended to a wildcard-free pattern so it also covers everything below it.
      *
-     * <p>Load-bearing for transaction names: Spring calls a transaction
-     * {@code com.acme.OrderService.createOrder}, one segment longer than the class an ignore
-     * pattern is written against. Without this, a pattern would match the call site and not the
-     * transaction — and only for some patterns, which is worse than not working at all.
+     * <p>Deliberately not appended to a pattern that has wildcards: those say what shape they
+     * want, and blanketing them would make a trailing {@code *} cross package separators, which
+     * is exactly what {@code **} is for.
      */
     private static final String SUBPACKAGE_SUFFIX = "(\\..*)?";
 
@@ -102,6 +101,6 @@ public final class PackagePatterns {
             sb.append(Pattern.quote(String.valueOf(c)));
             i++;
         }
-        return sb.append(SUBPACKAGE_SUFFIX).toString();
+        return sb.toString();
     }
 }

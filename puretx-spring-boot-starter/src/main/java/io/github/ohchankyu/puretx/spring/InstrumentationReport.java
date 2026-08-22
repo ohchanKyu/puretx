@@ -1,9 +1,10 @@
 package io.github.ohchankyu.puretx.spring;
 
 import io.github.ohchankyu.puretx.Puretx;
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +18,13 @@ import org.springframework.beans.factory.SmartInitializingSingleton;
  * {@code detectors=[http]} and have no instrumented client at all, and the only symptom is
  * silence — indistinguishable from clean code.
  *
+ * <p>Registrations are counted when this runs, not when they were made. Attaching and counting in
+ * the same breath is how the report came to claim a Kafka producer factory that had silently
+ * dropped the registration: {@code addPostProcessor} is an interface default with an empty body.
+ * Anything that can be undone later — a listener list replaced wholesale, a post-processor a
+ * factory chose to ignore — hands over a check instead of a number, and is counted only if it is
+ * still attached by the time every singleton exists.
+ *
  * <p>It warns about the two shapes that mean nothing will ever be reported, and about nothing
  * else. Listing a kind an application simply does not use would be noise, and a warning that
  * fires on a correct setup is how a library gets removed.
@@ -26,17 +34,33 @@ public final class InstrumentationReport implements SmartInitializingSingleton {
     private static final Logger log = LoggerFactory.getLogger(Puretx.LOGGER_NAME);
 
     /** Kinds that carry an outbound call, as opposed to opening the transaction around one. */
-    private static final String[] HTTP_KINDS = {"RestTemplate", "RestClient", "WebClient", "WebClient.Builder", "Feign"};
+    private static final List<String> HTTP_KINDS =
+            List.of("RestTemplate", "RestClient", "WebClient", "WebClient.Builder", "Feign");
 
     private static final String TRANSACTION_MANAGER = "transaction manager";
 
-    private final Map<String, AtomicInteger> counts = new ConcurrentHashMap<>();
+    private final List<Registration> registrations = new CopyOnWriteArrayList<>();
+
+    private Map<String, Long> counts = Map.of();
 
     private volatile boolean watchingHttp;
 
-    /** Called by each post-processor as it attaches puretx to a bean. */
+    /**
+     * Records an instrumentation that cannot come undone — puretx built the object being returned,
+     * so nothing else gets to replace what was put in it.
+     */
     public void instrumented(final String kind) {
-        counts.computeIfAbsent(kind, key -> new AtomicInteger()).incrementAndGet();
+        instrumented(kind, () -> true);
+    }
+
+    /**
+     * Records an instrumentation that something else could still remove, along with how to tell.
+     *
+     * @param stillAttached evaluated once every singleton exists; a registration that has since
+     *                      been dropped is not counted, and not used to suppress a warning
+     */
+    public void instrumented(final String kind, final BooleanSupplier stillAttached) {
+        registrations.add(new Registration(kind, stillAttached));
     }
 
     /** Declared by the HTTP detectors when they are configured at all. */
@@ -46,10 +70,13 @@ public final class InstrumentationReport implements SmartInitializingSingleton {
 
     @Override
     public void afterSingletonsInstantiated() {
+        counts = registrations.stream()
+                .filter(registration -> registration.stillAttached().getAsBoolean())
+                .collect(Collectors.groupingBy(Registration::kind, Collectors.counting()));
+
         final String tally = counts.entrySet().stream()
-                .filter(entry -> entry.getValue().get() > 0)
                 .sorted(Map.Entry.comparingByKey())
-                .map(entry -> entry.getValue().get() + " " + entry.getKey())
+                .map(entry -> entry.getValue() + " " + entry.getKey())
                 .collect(Collectors.joining(", "));
 
         if (count(TRANSACTION_MANAGER) == 0) {
@@ -58,7 +85,7 @@ public final class InstrumentationReport implements SmartInitializingSingleton {
                     + "can be instrumented; reactive transaction managers cannot.");
             return;
         }
-        if (watchingHttp && httpInstrumented() == 0) {
+        if (watchingHttp && HTTP_KINDS.stream().mapToLong(this::count).sum() == 0) {
             log.warn("[puretx] instrumented {}, but no HTTP client — an outbound call is only seen "
                     + "through a RestTemplate, RestClient or WebClient bean, so a client built inside "
                     + "a method, or a vendor SDK with its own stack, stays invisible.", tally);
@@ -69,16 +96,10 @@ public final class InstrumentationReport implements SmartInitializingSingleton {
         }
     }
 
-    private int httpInstrumented() {
-        int total = 0;
-        for (final String kind : HTTP_KINDS) {
-            total += count(kind);
-        }
-        return total;
+    private long count(final String kind) {
+        return counts.getOrDefault(kind, 0L);
     }
 
-    private int count(final String kind) {
-        final AtomicInteger value = counts.get(kind);
-        return value == null ? 0 : value.get();
+    private record Registration(String kind, BooleanSupplier stillAttached) {
     }
 }

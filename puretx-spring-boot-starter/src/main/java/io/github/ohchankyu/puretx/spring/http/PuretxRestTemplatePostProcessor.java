@@ -32,7 +32,8 @@ public final class PuretxRestTemplatePostProcessor implements BeanPostProcessor 
     public Object postProcessAfterInitialization(final Object bean, final String beanName) throws BeansException {
         if (bean instanceof RestTemplate restTemplate) {
             interceptor.installOn(restTemplate);
-            report.instrumented("RestTemplate");
+            report.instrumented("RestTemplate", () -> restTemplate.getInterceptors().stream()
+                    .anyMatch(PuretxClientHttpRequestInterceptor.class::isInstance));
         }
         return bean;
     }

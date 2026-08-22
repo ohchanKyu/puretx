@@ -48,13 +48,13 @@ public final class PuretxProducerFactoryPostProcessor implements BeanPostProcess
 
         // addPostProcessor and getPostProcessors are interface defaults with empty bodies, so a
         // factory that overrides neither accepts the registration and discards it.
-        if (factory.getPostProcessors().contains(added)) {
-            report.instrumented("Kafka producer factory");
-        } else {
+        if (!factory.getPostProcessors().contains(added)) {
             log.warn("[puretx] {} does not support producer post-processors, so what it publishes "
                     + "is not seen. Only DefaultKafkaProducerFactory and subclasses can be "
                     + "instrumented.", bean.getClass().getName());
+            return bean;
         }
+        report.instrumented("Kafka producer factory", () -> factory.getPostProcessors().contains(added));
         return bean;
     }
 
