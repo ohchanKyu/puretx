@@ -69,6 +69,25 @@ class PuretxEngineTests {
     }
 
     @Test
+    @DisplayName("an ignore pattern is matched against the class, not the method appended to it")
+    void ignoreMatchesTheDeclaringClassOfATransaction() {
+        // A transaction is named FQCN + "." + method, one segment longer than the class a pattern
+        // is written against. The pattern is matched as written; the method segment is stripped.
+        for (final String pattern : List.of(
+                "com.acme.orders",
+                "com.acme.orders.OrderService",
+                "com.acme.*.OrderService",
+                "com.acme.**")) {
+            final PuretxEngine engine =
+                    engine(PuretxSettings.builder().ignore(List.of(pattern)).build(), () -> ACTIVE);
+
+            engine.report(ViolationType.HTTP_CALL, () -> "HTTP GET https://example.com");
+
+            assertThat(engine.store().all()).as("ignored by %s", pattern).isEmpty();
+        }
+    }
+
+    @Test
     @DisplayName("suppression is re-entrant and survives an exception")
     void suppressionIsReentrant() {
         PuretxEngine engine = engine(PuretxSettings.builder().build(), () -> ACTIVE);

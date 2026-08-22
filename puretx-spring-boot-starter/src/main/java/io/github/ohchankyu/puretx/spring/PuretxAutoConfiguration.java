@@ -156,8 +156,15 @@ public class PuretxAutoConfiguration {
         }
     }
 
+    /**
+     * A {@code RequestInterceptor} bean only reaches a Feign client through spring-cloud-openfeign.
+     * feign-core alone often arrives as a transitive dependency of something else, and registering
+     * the bean there would count as instrumentation while attaching to nothing — and, worse,
+     * suppress the warning that says no HTTP client was reached.
+     */
     @Configuration(proxyBeanMethods = false)
-    @ConditionalOnClass(RequestInterceptor.class)
+    @ConditionalOnClass(value = RequestInterceptor.class,
+            name = "org.springframework.cloud.openfeign.FeignClientBuilder")
     @ConditionalOnProperty(prefix = "puretx.detectors", name = "http", havingValue = "true", matchIfMissing = true)
     static class FeignDetection {
 

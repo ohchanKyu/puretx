@@ -32,25 +32,22 @@ class PackagePatternsTests {
     }
 
     @Test
-    @DisplayName("a pattern matches a transaction name too, wildcards or not")
-    void matchesTransactionNamesAsWellAsClassNames() {
-        // Spring names a transaction FQCN + "." + method, so an ignore pattern written for a class
-        // has to cover the name with the method on the end. Both branches of toRegex must agree.
-        final String type = "com.acme.orders.OrderService";
-        final String transaction = type + ".createOrder";
+    @DisplayName("a single star still stops at a package separator")
+    void singleWildcardDoesNotCrossPackageSeparator() {
+        final PackagePatterns patterns = PackagePatterns.of(List.of("com.acme.*"));
 
-        for (final String pattern : List.of(
-                "com.acme.orders",
-                "com.acme.orders.OrderService",
-                "com.acme.*.OrderService",
-                "com.acme.**.OrderService",
-                "com.acme.orders.*",
-                "com.acme.**")) {
-            final PackagePatterns patterns = PackagePatterns.of(List.of(pattern));
-            assertThat(patterns.matches(type)).as("%s should match the class", pattern).isTrue();
-            assertThat(patterns.matches(transaction))
-                    .as("%s should match the transaction name", pattern).isTrue();
-        }
+        assertThat(patterns.matches("com.acme.OrderService")).isTrue();
+        assertThat(patterns.matches("com.acme.orders.OrderService")).isFalse();
+        assertThat(patterns.matches("com.acme.orders.OrderService.createOrder")).isFalse();
+    }
+
+    @Test
+    @DisplayName("a double star crosses separators, which is the whole difference")
+    void doubleWildcardCrossesPackageSeparators() {
+        final PackagePatterns patterns = PackagePatterns.of(List.of("com.acme.**"));
+
+        assertThat(patterns.matches("com.acme.OrderService")).isTrue();
+        assertThat(patterns.matches("com.acme.orders.OrderService")).isTrue();
     }
 
     @Test
