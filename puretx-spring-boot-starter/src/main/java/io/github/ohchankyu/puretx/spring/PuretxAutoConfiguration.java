@@ -9,6 +9,7 @@ import io.github.ohchankyu.puretx.ViolationListener;
 import io.github.ohchankyu.puretx.spring.http.PuretxClientHttpRequestInterceptor;
 import io.github.ohchankyu.puretx.spring.http.PuretxExchangeFilterFunction;
 import io.github.ohchankyu.puretx.spring.http.PuretxFeignRequestInterceptor;
+import io.github.ohchankyu.puretx.spring.http.PuretxRestClientPostProcessor;
 import io.github.ohchankyu.puretx.spring.http.PuretxRestTemplatePostProcessor;
 import io.github.ohchankyu.puretx.spring.kafka.PuretxProducerFactoryPostProcessor;
 import io.github.ohchankyu.puretx.spring.tx.PuretxTransactionManagerPostProcessor;
@@ -22,7 +23,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.boot.web.client.RestClientCustomizer;
 import org.springframework.boot.web.client.RestTemplateCustomizer;
 import org.springframework.boot.web.reactive.function.client.WebClientCustomizer;
 import org.springframework.context.annotation.Bean;
@@ -117,8 +117,8 @@ public class PuretxAutoConfiguration {
     static class RestClientDetection {
 
         @Bean
-        RestClientCustomizer puretxRestClientCustomizer(final PuretxClientHttpRequestInterceptor interceptor) {
-            return builder -> builder.requestInterceptor(interceptor);
+        static PuretxRestClientPostProcessor puretxRestClientPostProcessor(final ObjectProvider<PuretxEngine> engine) {
+            return new PuretxRestClientPostProcessor(lazy(engine));
         }
     }
 
