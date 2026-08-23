@@ -89,6 +89,8 @@ public class PuretxProperties {
     /** The individual detectors. Final, so Lombok gives it a getter and no setter — which is what binding needs. */
     private final Detectors detectors = new Detectors();
 
+    private final Metrics metrics = new Metrics();
+
     public PuretxSettings toSettings() {
         return PuretxSettings.builder()
                 .enabled(enabled)
@@ -104,6 +106,19 @@ public class PuretxProperties {
                 .detect(ViolationType.MESSAGE_PUBLISH, detectors.isMessaging())
                 .detect(ViolationType.LONG_TRANSACTION, detectors.isDuration())
                 .build();
+    }
+
+    /** Micrometer publishing, on whenever a MeterRegistry is on the classpath. */
+    @Getter
+    @Setter
+    public static class Metrics {
+
+        /**
+         * Whether to publish {@code puretx.violations} and {@code puretx.violation.duration}.
+         * Tagged by violation type only — the call site and transaction name stay in the log,
+         * where they cost nothing.
+         */
+        private boolean enabled = true;
     }
 
     /** Individual detectors, all on by default. */

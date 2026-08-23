@@ -34,6 +34,7 @@ dependencies {
     compileOnly("org.springframework:spring-web")
     compileOnly("org.springframework:spring-webflux")
     compileOnly("org.springframework.kafka:spring-kafka")
+    compileOnly("io.micrometer:micrometer-core")
     compileOnly("io.github.openfeign:feign-core:$feignVersion")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
@@ -41,6 +42,7 @@ dependencies {
     testImplementation("org.springframework:spring-web")
     testImplementation("org.springframework:spring-webflux")
     testImplementation("org.springframework.kafka:spring-kafka")
+    testImplementation("io.micrometer:micrometer-core")
     testImplementation("io.github.openfeign:feign-core:$feignVersion")
     testImplementation("io.projectreactor:reactor-test")
     testRuntimeOnly("com.h2database:h2")

@@ -239,6 +239,18 @@ thread before the call returns.
 and for sending them somewhere of your own — register a `ViolationListener` bean and puretx will
 call it for every violation.
 
+With Micrometer on the classpath, two meters are published so `WARN` in production is more than a
+log to grep:
+
+| | |
+|---|---|
+| `puretx.violations` | how often, tagged `type` |
+| `puretx.violation.duration` | how long the offending operation took |
+
+Tagged by violation type only. The call site and transaction name stay in the log — they are
+unbounded as tags, and a metrics backend charges for cardinality. Switch it off with
+`puretx.metrics.enabled: false`.
+
 ## What it deliberately does not do
 
 - **It does not roll back or retry.** Transaction demarcation belongs to Spring's transaction
