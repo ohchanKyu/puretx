@@ -16,6 +16,7 @@ import io.github.ohchankyu.puretx.spring.kafka.PuretxProducerFactoryPostProcesso
 import io.github.ohchankyu.puretx.spring.metrics.PuretxMetricsListener;
 import io.github.ohchankyu.puretx.spring.tx.PuretxTransactionManagerPostProcessor;
 import io.github.ohchankyu.puretx.spring.tx.SpringTransactionProbe;
+import io.github.ohchankyu.puretx.spring.tx.TransactionScopeManager;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
@@ -67,6 +68,9 @@ public class PuretxAutoConfiguration {
         if (properties.isLog()) {
             engine.addListener(new LoggingViolationListener());
         }
+        // After the logger on purpose. A call recorded once its transaction has already ended emits
+        // the summary from here, and the summary should follow the violations it explains.
+        engine.addListener(TransactionScopeManager.callRecorder(() -> engine));
         listeners.orderedStream().forEach(engine::addListener);
         Puretx.setEngine(engine);
 

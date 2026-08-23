@@ -11,4 +11,13 @@ package io.github.ohchankyu.puretx;
 public interface ViolationListener {
 
     void onViolation(Violation violation);
+
+    /**
+     * Called once when a transaction that produced violations ends.
+     *
+     * <p>Defaulted to nothing, so a listener that only cares about individual violations — most of
+     * them — needs no change.
+     */
+    default void onTransactionSummary(final TransactionSummary summary) {
+    }
 }

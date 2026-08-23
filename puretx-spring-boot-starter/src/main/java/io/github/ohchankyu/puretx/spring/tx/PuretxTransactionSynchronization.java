@@ -1,6 +1,7 @@
 package io.github.ohchankyu.puretx.spring.tx;
 
 import io.github.ohchankyu.puretx.PuretxEngine;
+import io.github.ohchankyu.puretx.TransactionSummary;
 import org.springframework.core.Ordered;
 import org.springframework.transaction.support.TransactionSynchronization;
 
@@ -46,12 +47,22 @@ final class PuretxTransactionSynchronization implements TransactionSynchronizati
     @Override
     public void afterCompletion(final int status) {
         scope.markPostCompletion();
+        scope.markEnded();
+        reportSummary();
     }
 
     /** Reported once per transaction: whichever of the two callbacks arrives first claims it. */
     private void reportDuration(final boolean quiet) {
         if (scope.claimDurationReport()) {
             engine.reportLongTransaction(scope.elapsedMillis(), quiet);
+        }
+    }
+
+    /** One line explaining the violations already reported, if there were any. */
+    private void reportSummary() {
+        final TransactionSummary summary = scope.summarise();
+        if (summary != null) {
+            engine.reportTransactionSummary(summary);
         }
     }
 }

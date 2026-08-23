@@ -1,6 +1,10 @@
 package io.github.ohchankyu.puretx.spring.tx;
 
 import io.github.ohchankyu.puretx.TransactionInfo;
+import io.github.ohchankyu.puretx.TransactionSummary;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import lombok.Getter;
 import org.springframework.transaction.TransactionExecution;
 
@@ -34,6 +38,16 @@ public final class TransactionScope {
     private boolean postCompletion;
 
     private boolean durationReported;
+
+    private final AtomicBoolean summaryReported = new AtomicBoolean();
+
+    private volatile boolean ended;
+
+    // A reactive client records its violation on the thread the exchange completed on, not the
+    // one that opened the transaction, so these are written from more than one thread.
+    private final AtomicInteger callCount = new AtomicInteger();
+
+    private final AtomicLong callMillis = new AtomicLong();
 
     @Getter
     private boolean completed;
@@ -74,6 +88,38 @@ public final class TransactionScope {
         this.completed = true;
     }
 
+    /** Adds one reported call to what this transaction spent its life on. */
+    void recordCall(final long durationMillis) {
+        callCount.incrementAndGet();
+        if (durationMillis > 0) {
+            callMillis.addAndGet(durationMillis);
+        }
+    }
+
+    /** Marks the transaction as over, so a call recorded after this knows it arrived late. */
+    void markEnded() {
+        this.ended = true;
+    }
+
+    boolean hasEnded() {
+        return ended;
+    }
+
+    /**
+     * The summary, or {@code null} when there is nothing to summarise or it has already been given.
+     *
+     * <p>Claimed atomically because it can be asked for from two places: when the transaction ends,
+     * and again by a call that was recorded after that — a reactive client completes on its own
+     * thread and can land after the commit has been and gone.
+     */
+    TransactionSummary summarise() {
+        final int calls = callCount.get();
+        if (calls == 0 || !summaryReported.compareAndSet(false, true)) {
+            return null;
+        }
+        return new TransactionSummary(name, elapsedMillis(), calls, callMillis.get());
+    }
+
     boolean claimDurationReport() {
         if (durationReported) {
             return false;
@@ -83,6 +129,6 @@ public final class TransactionScope {
     }
 
     public TransactionInfo snapshot() {
-        return new TransactionInfo(name, elapsedMillis(), readOnly, testManaged, managerType);
+        return new TransactionInfo(name, elapsedMillis(), readOnly, testManaged, managerType, this);
     }
 }

@@ -1,7 +1,10 @@
 package io.github.ohchankyu.puretx.spring.tx;
 
+import io.github.ohchankyu.puretx.PuretxEngine;
+import io.github.ohchankyu.puretx.ViolationListener;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.function.Supplier;
 
 /**
  * The per-thread stack of open transaction scopes.
@@ -14,6 +17,11 @@ public final class TransactionScopeManager {
     private static final ThreadLocal<Deque<TransactionScope>> SCOPES = new ThreadLocal<>();
 
     private TransactionScopeManager() {}
+
+    /** The listener that attributes reported calls to the transaction they interrupted. */
+    public static ViolationListener callRecorder(final Supplier<PuretxEngine> engine) {
+        return new TransactionCallRecorder(engine);
+    }
 
     static void push(final TransactionScope scope) {
         Deque<TransactionScope> stack = SCOPES.get();
