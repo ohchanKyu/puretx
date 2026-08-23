@@ -12,6 +12,10 @@ import java.util.function.Supplier;
  * <p>Not by thread: a reactive client records on whichever thread its exchange completed on, and
  * the scope stack is thread-confined. The scope travels with the violation instead, as the opaque
  * {@code source} the probe put on {@code TransactionInfo}.
+ *
+ * <p>A long transaction is the transaction rather than something inside it, so it is not counted
+ * as a call. A call that arrives once its transaction has ended emits the summary itself: the one
+ * offered when the transaction finished was empty and never sent.
  */
 final class TransactionCallRecorder implements ViolationListener {
 
@@ -23,7 +27,6 @@ final class TransactionCallRecorder implements ViolationListener {
 
     @Override
     public void onViolation(final Violation violation) {
-        // A long transaction is the transaction, not something that happened inside it.
         if (violation.type().isTransactionItself()) {
             return;
         }
@@ -32,8 +35,6 @@ final class TransactionCallRecorder implements ViolationListener {
         }
         scope.recordCall(violation.durationMillis());
         if (scope.hasEnded()) {
-            // The transaction finished before this call was recorded, so the summary it would have
-            // given was empty and was never sent. Send it now, from here.
             final TransactionSummary summary = scope.summarise();
             if (summary != null) {
                 engine.get().reportTransactionSummary(summary);

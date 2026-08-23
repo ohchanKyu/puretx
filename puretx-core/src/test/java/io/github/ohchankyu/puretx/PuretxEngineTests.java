@@ -72,8 +72,6 @@ class PuretxEngineTests {
     @Test
     @DisplayName("an ignore pattern is matched against the class, not the method appended to it")
     void ignoreMatchesTheDeclaringClassOfATransaction() {
-        // A transaction is named FQCN + "." + method, one segment longer than the class a pattern
-        // is written against. The pattern is matched as written; the method segment is stripped.
         for (final String pattern : List.of(
                 "com.acme.orders",
                 "com.acme.orders.OrderService",

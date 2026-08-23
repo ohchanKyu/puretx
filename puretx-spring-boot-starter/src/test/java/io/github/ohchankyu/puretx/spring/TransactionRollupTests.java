@@ -84,8 +84,6 @@ class TransactionRollupTests {
     void attributesCallsRecordedOnAnotherThread() {
         orderService.createOrderWithWebClient(server.url());
 
-        // The scope travels with the violation, so the thread it lands on does not matter — and
-        // a call recorded after the transaction ended still produces the summary.
         await().atMost(Duration.ofSeconds(5)).untilAsserted(() ->
                 assertThat(summaries).singleElement().satisfies(summary -> {
                     assertThat(summary.displayName()).isEqualTo("OrderService.createOrderWithWebClient");
@@ -111,8 +109,6 @@ class TransactionRollupTests {
 
         await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> assertThat(summaries).hasSize(1));
         final TransactionSummary summary = summaries.get(0);
-        // The WebClient violation lands after the commit; measuring at that point would stretch the
-        // transaction by however long the recording took and quietly shrink the percentage.
         assertThat(summary.transactionMillis())
                 .isLessThan(Duration.ofSeconds(5).toMillis())
                 .isGreaterThanOrEqualTo(summary.callMillis());
