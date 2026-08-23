@@ -1,0 +1,11 @@
+# JitPack packages a commit that CI has already verified — it does not re-verify it.
+#
+# The default JDK there is 8, which cannot build this at all, and `build` would re-run checkstyle
+# and the whole test suite. GitHub Actions already does that on every push, across JDK 17 and 21,
+# and a failure here is not a red check: it reaches consumers as a dependency that will not
+# resolve. So this does the one thing JitPack needs, and nothing else.
+jdk:
+  - openjdk17
+
+install:
+  - ./gradlew clean publishToMavenLocal --no-daemon

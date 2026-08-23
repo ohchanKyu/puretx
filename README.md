@@ -34,16 +34,19 @@ production, at the worst possible time. puretx moves that discovery forward to t
 
 ## Getting started
 
-Not published yet. For now, build it locally:
-
-```bash
-git clone https://github.com/ohchanKyu/puretx && cd puretx && ./gradlew publishToMavenLocal
-```
+Not on Maven Central yet — served from JitPack while the API settles.
 
 ```kotlin
-repositories { mavenLocal() }
-implementation("io.github.ohchankyu:puretx-spring-boot-starter:0.1.0-SNAPSHOT")
+repositories {
+    mavenCentral()
+    maven { url = uri("https://jitpack.io") }
+}
+
+implementation("com.github.ohchanKyu.puretx:puretx-spring-boot-starter:v0.1.0-rc1")
 ```
+
+The coordinate changes to `io.github.ohchankyu:puretx-spring-boot-starter` on the first Central
+release; the JitPack one is temporary.
 
 That is the whole setup. puretx defaults to `WARN`, instruments the transaction managers and HTTP
 clients already in your context, and stays out of the way of everything else.
