@@ -125,8 +125,17 @@ Clients are instrumented as beans, however they were built — `new RestTemplate
 constructed inside a method and never registered as a bean is the one case puretx cannot reach.
 
 Only Spring's HTTP abstractions are covered. A vendor SDK that ships its own client — the Slack
-SDK, the AWS SDK — goes out over its own stack and is invisible here. `PuretxEngine.start`/`finish`
-is public for exactly that: wrap whatever hook the SDK gives you and report through it.
+SDK, the AWS SDK — goes out over its own stack and is invisible here. Wrap the call to make it
+visible:
+
+```java
+return Puretx.watch("Slack chat.postMessage",
+        () -> slack.methods().chatPostMessage(request));
+```
+
+That behaves like any other detector: nothing happens outside a transaction, it logs in `WARN`,
+and in `FAIL` it throws before the call. `Puretx.watch(MESSAGE_PUBLISH, …)` reports a publish
+rather than an HTTP call.
 
 ## What else is out there
 

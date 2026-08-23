@@ -63,6 +63,55 @@ public final class Puretx {
         }
     }
 
+    /**
+     * Reports {@code call} as an outbound HTTP call if a transaction is open, and times it.
+     *
+     * <p>The counterpart to {@link #suppress}: that one says "I know, and it is fine", this one
+     * says "watch this, you cannot see it yourself". puretx instruments the Spring HTTP clients,
+     * but a vendor SDK — Slack, AWS, a payment provider's own library — goes out over its own
+     * stack and is invisible. Wrapping the call is what makes it visible:
+     *
+     * <pre>{@code
+     * return Puretx.watch("Slack chat.postMessage",
+     *         () -> slack.methods().chatPostMessage(request));
+     * }</pre>
+     *
+     * <p>Costs nothing when there is no transaction open, and behaves like every other detector:
+     * it logs in {@code WARN} and throws before the call in {@code FAIL}.
+     */
+    public static <T> T watch(final String description, final Supplier<T> call) {
+        return watch(ViolationType.HTTP_CALL, description, call);
+    }
+
+    /** {@link #watch(String, Supplier)} for a call that returns nothing. */
+    public static void watch(final String description, final Runnable call) {
+        watch(ViolationType.HTTP_CALL, description, () -> {
+            call.run();
+            return null;
+        });
+    }
+
+    /** {@link #watch(String, Supplier)} for something other than an HTTP call — a publish, say. */
+    public static <T> T watch(final ViolationType type, final String description, final Supplier<T> call) {
+        final Detection detection = engine.start(type, () -> description);
+        if (detection == null) {
+            return call.get();
+        }
+        try {
+            return call.get();
+        } finally {
+            engine.finish(detection);
+        }
+    }
+
+    /** {@link #watch(ViolationType, String, Supplier)} for a call that returns nothing. */
+    public static void watch(final ViolationType type, final String description, final Runnable call) {
+        watch(type, description, () -> {
+            call.run();
+            return null;
+        });
+    }
+
     /** True while the current thread is inside {@link #suppress}. */
     public static boolean isSuppressed() {
         return Suppressions.active();
