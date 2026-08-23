@@ -33,11 +33,15 @@ public final class ViolationFormatter {
 
     /** The one-line summary of everything a transaction spent its life on. */
     public static String format(final TransactionSummary summary) {
+        final String calls = summary.callCount() + (summary.callCount() == 1 ? " external call" : " external calls");
+        if (summary.callMillis() <= 0) {
+            return String.format(Locale.ROOT, "[puretx] %s held a transaction open for %,dms, with %s inside it",
+                    summary.displayName(), summary.transactionMillis(), calls);
+        }
         return String.format(Locale.ROOT,
-                "[puretx] %s held a transaction open for %,dms — %,dms of it (%d%%) waiting on %d %s",
+                "[puretx] %s held a transaction open for %,dms — %,dms of it (%d%%) waiting on %s",
                 summary.displayName(), summary.transactionMillis(), summary.callMillis(),
-                summary.percentageSpentOnCalls(), summary.callCount(),
-                summary.callCount() == 1 ? "external call" : "external calls");
+                summary.percentageSpentOnCalls(), calls);
     }
 
     /**

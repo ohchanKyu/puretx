@@ -57,6 +57,16 @@ puretx:
 
 ## What you get
 
+One line per transaction, saying where its life went:
+
+```
+[puretx] OrderService.createOrder held a transaction open for 448ms — 431ms of it (96%) waiting on 1 external call
+```
+
+That share is the number nothing else can give you. A trace shows a slow request; a connection-pool
+warning shows a symptom. This says how much of one transaction's life was spent outside the
+database — and above it, exactly which call and which line of your code:
+
 ```
 [puretx] IMPURE TRANSACTION detected
   tx       : OrderService.createOrder (started 15ms ago, JdbcTransactionManager)
@@ -69,16 +79,6 @@ puretx:
              at com.acme.orders.OrderService.createOrder(OrderService.java:29)
              at com.acme.orders.OrderController.create(OrderController.java:19)
 ```
-
-When the transaction ends, one line says what it added up to:
-
-```
-[puretx] OrderService.placeOrder held a transaction open for 414ms — 408ms of it (99%) waiting on 1 external call
-```
-
-That share is the number nothing else can give you. A trace shows a slow request; a connection-pool
-warning shows a symptom. This says how much of one transaction's life was spent outside the
-database, and the lines above it say exactly which calls.
 
 The transaction line comes first on purpose. "You made an HTTP call" is easy to shrug off. "You made
 an HTTP call 15ms into a transaction, and it took 431ms" is the sentence that gets it fixed.

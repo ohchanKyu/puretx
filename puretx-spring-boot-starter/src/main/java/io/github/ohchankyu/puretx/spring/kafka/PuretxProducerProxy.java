@@ -1,5 +1,6 @@
 package io.github.ohchankyu.puretx.spring.kafka;
 
+import io.github.ohchankyu.puretx.Detection;
 import io.github.ohchankyu.puretx.PuretxEngine;
 import io.github.ohchankyu.puretx.ViolationType;
 import java.lang.reflect.InvocationHandler;
@@ -49,8 +50,34 @@ final class PuretxProducerProxy implements InvocationHandler {
                 && args.length > 0
                 && args[0] instanceof ProducerRecord<?, ?> record
         ) {
-            inspect(record);
+            return send(method, args, record);
         }
+        return invokeTarget(method, args);
+    }
+
+    /**
+     * Times the send as well as reporting it.
+     *
+     * <p>{@code KafkaProducer.send} buffers and returns, but it blocks for up to
+     * {@code max.block.ms} while it waits for metadata or for room in the buffer — real time, held
+     * with the transaction open. Reporting it without a duration left the transaction summary
+     * saying a publish cost 0% of the transaction, which reads as "nothing to see here" for the
+     * one violation a rollback cannot take back.
+     */
+    private Object send(final Method method, final Object[] args, final ProducerRecord<?, ?> record)
+            throws Throwable {
+        final Detection detection = detect(record);
+        if (detection == null) {
+            return invokeTarget(method, args);
+        }
+        try {
+            return invokeTarget(method, args);
+        } finally {
+            engine.finish(detection);
+        }
+    }
+
+    private Object invokeTarget(final Method method, final Object[] args) throws Throwable {
         try {
             return method.invoke(target, args);
         } catch (InvocationTargetException ex) {
@@ -58,11 +85,12 @@ final class PuretxProducerProxy implements InvocationHandler {
         }
     }
 
-    private void inspect(final ProducerRecord<?, ?> record) {
+    private Detection detect(final ProducerRecord<?, ?> record) {
         if (!engine.isWatching(ViolationType.MESSAGE_PUBLISH) || isKafkaManagedTransaction()) {
-            return;
+            return null;
         }
-        engine.report(ViolationType.MESSAGE_PUBLISH, () -> "Kafka send -> topic '" + record.topic() + "'");
+        return engine.start(ViolationType.MESSAGE_PUBLISH,
+                () -> "Kafka send -> topic '" + record.topic() + "'");
     }
 
     /** True when Spring has bound this producer to the current transaction, i.e. it is a Kafka transaction. */
