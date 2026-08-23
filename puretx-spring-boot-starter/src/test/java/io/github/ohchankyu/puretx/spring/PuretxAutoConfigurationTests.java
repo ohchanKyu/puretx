@@ -11,7 +11,10 @@ import io.github.ohchankyu.puretx.ViolationListener;
 import io.github.ohchankyu.puretx.ViolationType;
 import io.github.ohchankyu.puretx.spring.http.PuretxClientHttpRequestInterceptor;
 import io.github.ohchankyu.puretx.spring.http.PuretxExchangeFilterFunction;
+import io.github.ohchankyu.puretx.spring.metrics.PuretxMetricsListener;
 import io.github.ohchankyu.puretx.spring.tx.SpringTransactionProbe;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -96,6 +99,33 @@ class PuretxAutoConfigurationTests {
         runner.withUserConfiguration(CustomProbeConfiguration.class).run(context -> {
             assertThat(context).doesNotHaveBean(SpringTransactionProbe.class);
             assertThat(context).hasSingleBean(TransactionProbe.class);
+        });
+    }
+
+    @Test
+    @DisplayName("the metrics listener is wired whenever micrometer is on the classpath")
+    void registersTheMetricsListener() {
+        runner.run(context -> assertThat(context).hasSingleBean(PuretxMetricsListener.class));
+    }
+
+    @Test
+    @DisplayName("puretx.metrics.enabled=false leaves the registry alone")
+    void skipsMetricsWhenSwitchedOff() {
+        runner.withPropertyValues("puretx.metrics.enabled=false")
+                .run(context -> assertThat(context).doesNotHaveBean(PuretxMetricsListener.class));
+    }
+
+    @Test
+    @DisplayName("a violation reaches the registry through the listener the engine picked up")
+    void publishesViolationsToTheRegistry() {
+        runner.withBean(MeterRegistry.class, SimpleMeterRegistry::new).run(context -> {
+            final PuretxEngine engine = context.getBean(PuretxEngine.class);
+            engine.setProbe(() -> new TransactionInfo("com.acme.OrderService.createOrder", 10, false, false, ""));
+
+            engine.report(ViolationType.HTTP_CALL, () -> "HTTP GET https://example.com");
+
+            assertThat(context.getBean(MeterRegistry.class)
+                    .counter("puretx.violations", "type", "http").count()).isEqualTo(1);
         });
     }
 

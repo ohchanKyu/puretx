@@ -13,8 +13,10 @@ import io.github.ohchankyu.puretx.spring.http.PuretxRestClientPostProcessor;
 import io.github.ohchankyu.puretx.spring.http.PuretxRestTemplatePostProcessor;
 import io.github.ohchankyu.puretx.spring.http.PuretxWebClientPostProcessor;
 import io.github.ohchankyu.puretx.spring.kafka.PuretxProducerFactoryPostProcessor;
+import io.github.ohchankyu.puretx.spring.metrics.PuretxMetricsListener;
 import io.github.ohchankyu.puretx.spring.tx.PuretxTransactionManagerPostProcessor;
 import io.github.ohchankyu.puretx.spring.tx.SpringTransactionProbe;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -170,6 +172,24 @@ public class PuretxAutoConfiguration {
         @Bean
         PuretxFeignRequestInterceptor puretxFeignRequestInterceptor(final PuretxEngine engine, final InstrumentationReport report) {
             return new PuretxFeignRequestInterceptor(engine, report);
+        }
+    }
+
+    /**
+     * Registered as a {@link io.github.ohchankyu.puretx.ViolationListener}, so the engine picks it
+     * up like any other. The registry is resolved lazily rather than required as a bean: that keeps
+     * this independent of when the metrics auto-configuration happens to run, and lets the listener
+     * do nothing at all if no registry ever turns up.
+     */
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnClass(MeterRegistry.class)
+    @ConditionalOnProperty(prefix = "puretx.metrics", name = "enabled", havingValue = "true",
+            matchIfMissing = true)
+    static class MetricsPublishing {
+
+        @Bean
+        PuretxMetricsListener puretxMetricsListener(final ObjectProvider<MeterRegistry> registry) {
+            return new PuretxMetricsListener(registry::getIfAvailable);
         }
     }
 
