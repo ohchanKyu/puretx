@@ -18,13 +18,31 @@ public record TransactionInfo(
     long elapsedMillis,
     boolean readOnly,
     boolean testManaged,
-    String managerType
+    String managerType,
+    Object source
 ) {
+    /**
+     * Whatever the probe wants handed back to it later, or {@code null}.
+     *
+     * <p>Opaque on purpose: core stores it and returns it, and never looks inside. It exists so a
+     * framework can recognise its own transaction again when a violation is recorded on a
+     * different thread from the one that started it — which is what a reactive client does.
+     */
+    public Object source() {
+        return source;
+    }
+
     /** Shown for a transaction started without a name, e.g. through TransactionTemplate. */
     private static final String UNNAMED = "<unnamed transaction>";
 
     /** Used when a transaction is known to be active but nothing else about it could be resolved. */
     public static final TransactionInfo UNKNOWN = new TransactionInfo("", -1, false, false, "");
+
+    /** For a probe with nothing to hand back. */
+    public TransactionInfo(final String name, final long elapsedMillis, final boolean readOnly,
+            final boolean testManaged, final String managerType) {
+        this(name, elapsedMillis, readOnly, testManaged, managerType, null);
+    }
 
     public TransactionInfo {
         name = StringUtils.defaultString(name);

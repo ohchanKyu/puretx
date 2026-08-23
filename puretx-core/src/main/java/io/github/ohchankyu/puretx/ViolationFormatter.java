@@ -31,6 +31,15 @@ public final class ViolationFormatter {
         return sb.toString();
     }
 
+    /** The one-line summary of everything a transaction spent its life on. */
+    public static String format(final TransactionSummary summary) {
+        return String.format(Locale.ROOT,
+                "[puretx] %s held a transaction open for %,dms — %,dms of it (%d%%) waiting on %d %s",
+                summary.displayName(), summary.transactionMillis(), summary.callMillis(),
+                summary.percentageSpentOnCalls(), summary.callCount(),
+                summary.callCount() == 1 ? "external call" : "external calls");
+    }
+
     /**
      * The multi-line report followed by the chain of application frames that led to the violation.
      *

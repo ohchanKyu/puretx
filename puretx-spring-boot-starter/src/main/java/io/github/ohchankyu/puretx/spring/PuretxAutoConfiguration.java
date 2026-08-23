@@ -16,6 +16,7 @@ import io.github.ohchankyu.puretx.spring.kafka.PuretxProducerFactoryPostProcesso
 import io.github.ohchankyu.puretx.spring.metrics.PuretxMetricsListener;
 import io.github.ohchankyu.puretx.spring.tx.PuretxTransactionManagerPostProcessor;
 import io.github.ohchankyu.puretx.spring.tx.SpringTransactionProbe;
+import io.github.ohchankyu.puretx.spring.tx.TransactionScopeManager;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
@@ -67,6 +68,8 @@ public class PuretxAutoConfiguration {
         if (properties.isLog()) {
             engine.addListener(new LoggingViolationListener());
         }
+        // First, so a call is attributed to its transaction before anything else sees the violation.
+        engine.addListener(TransactionScopeManager.callRecorder(() -> engine));
         listeners.orderedStream().forEach(engine::addListener);
         Puretx.setEngine(engine);
 

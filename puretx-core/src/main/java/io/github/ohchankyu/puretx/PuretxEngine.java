@@ -181,6 +181,22 @@ public final class PuretxEngine {
         }
     }
 
+    /**
+     * Publishes what a transaction spent its life on. Called once, as the transaction ends.
+     *
+     * <p>Never throws, whatever the mode: this explains violations that have already been
+     * reported, and a summary is no reason to fail anything on its own.
+     */
+    public void reportTransactionSummary(final TransactionSummary summary) {
+        for (final ViolationListener listener : listeners) {
+            try {
+                listener.onTransactionSummary(summary);
+            } catch (RuntimeException ignored) {
+                // A broken listener must not break the application it is observing.
+            }
+        }
+    }
+
     private Violation record(final Violation violation) {
         store.add(violation);
         for (ViolationListener listener : listeners) {
