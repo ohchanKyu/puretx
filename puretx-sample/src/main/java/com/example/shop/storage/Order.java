@@ -12,7 +12,6 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-/** An order. {@code orders} rather than {@code order}, which is a reserved word in SQL. */
 @Entity
 @Table(name = "orders")
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)

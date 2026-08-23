@@ -23,8 +23,6 @@ public final class SpringTransactionProbe implements TransactionProbe {
         if (scope != null) {
             return scope.isPostCompletion() ? null : scope.snapshot();
         }
-        // A transaction manager puretx could not instrument (not an AbstractPlatformTransactionManager).
-        // Still worth reporting, just without the timing.
         return new TransactionInfo(
                 TransactionSynchronizationManager.getCurrentTransactionName(),
                 -1,

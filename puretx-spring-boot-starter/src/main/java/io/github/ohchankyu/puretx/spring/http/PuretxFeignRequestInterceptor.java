@@ -25,7 +25,6 @@ public final class PuretxFeignRequestInterceptor implements RequestInterceptor {
 
     public PuretxFeignRequestInterceptor(final PuretxEngine engine, final InstrumentationReport report) {
         this.engine = engine;
-        // Feign has no bean to post-process: registering this interceptor is the instrumentation.
         report.watchingHttp();
         report.instrumented("Feign");
     }

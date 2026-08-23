@@ -29,10 +29,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "puretx")
 public class PuretxProperties {
 
-    // The defaults below are spelled out as literals on purpose: spring-boot-configuration-processor
-    // can only read a compile-time constant, and it is what puts the default in an IDE's
-    // autocompletion. PuretxPropertyDefaultsTests keeps them in step with PuretxSettings.
-
     /** Master switch. When false, puretx adds no interceptors and no listeners at all. */
     private boolean enabled = true;
 

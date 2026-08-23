@@ -30,15 +30,11 @@ final class PuretxTransactionSynchronization implements TransactionSynchronizati
 
     @Override
     public void beforeCommit(final boolean readOnly) {
-        // The last moment at which throwing still makes sense: FAIL rolls the transaction back
-        // and the exception reaches the caller.
         reportDuration(false);
     }
 
     @Override
     public void beforeCompletion() {
-        // Reached on the rollback path too. Quiet, because a transaction that is already failing
-        // does not need a second exception on top of the one that caused it.
         reportDuration(true);
     }
 

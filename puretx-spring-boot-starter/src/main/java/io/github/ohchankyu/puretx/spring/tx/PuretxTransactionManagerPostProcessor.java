@@ -27,8 +27,7 @@ public final class PuretxTransactionManagerPostProcessor implements BeanPostProc
 
     private final InstrumentationReport report;
 
-    public PuretxTransactionManagerPostProcessor(final Supplier<PuretxEngine> engineSupplier,
-            final InstrumentationReport report) {
+    public PuretxTransactionManagerPostProcessor(final Supplier<PuretxEngine> engineSupplier, final InstrumentationReport report) {
         this.engineSupplier = SingletonSupplier.of(engineSupplier);
         this.report = report;
     }
@@ -48,8 +47,6 @@ public final class PuretxTransactionManagerPostProcessor implements BeanPostProc
         listeners.add(new PuretxTransactionExecutionListener(
                 engineSupplier, manager.getClass().getSimpleName()));
         manager.setTransactionExecutionListeners(listeners);
-        // setTransactionExecutionListeners replaces the list wholesale, so anything that calls it
-        // later drops puretx's listener without telling anyone.
         report.instrumented("transaction manager", () -> manager.getTransactionExecutionListeners().stream()
                 .anyMatch(PuretxTransactionExecutionListener.class::isInstance));
         return bean;

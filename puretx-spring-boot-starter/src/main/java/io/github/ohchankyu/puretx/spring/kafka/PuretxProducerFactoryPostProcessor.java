@@ -28,8 +28,7 @@ public final class PuretxProducerFactoryPostProcessor implements BeanPostProcess
 
     private final InstrumentationReport report;
 
-    public PuretxProducerFactoryPostProcessor(final Supplier<PuretxEngine> engineSupplier,
-            final InstrumentationReport report) {
+    public PuretxProducerFactoryPostProcessor(final Supplier<PuretxEngine> engineSupplier, final InstrumentationReport report) {
         this.engineSupplier = SingletonSupplier.of(engineSupplier);
         this.report = report;
     }
@@ -46,8 +45,6 @@ public final class PuretxProducerFactoryPostProcessor implements BeanPostProcess
         final PuretxProducerPostProcessor added = new PuretxProducerPostProcessor(engineSupplier, factory);
         ((ProducerFactory) factory).addPostProcessor(added);
 
-        // addPostProcessor and getPostProcessors are interface defaults with empty bodies, so a
-        // factory that overrides neither accepts the registration and discards it.
         if (!factory.getPostProcessors().contains(added)) {
             log.warn("[puretx] {} does not support producer post-processors, so what it publishes "
                     + "is not seen. Only DefaultKafkaProducerFactory and subclasses can be "
@@ -62,6 +59,7 @@ public final class PuretxProducerFactoryPostProcessor implements BeanPostProcess
     static final class PuretxProducerPostProcessor implements ProducerPostProcessor<Object, Object> {
 
         private final Supplier<PuretxEngine> engineSupplier;
+
         private final ProducerFactory<?, ?> factory;
 
         PuretxProducerPostProcessor(final Supplier<PuretxEngine> engineSupplier, final ProducerFactory<?, ?> factory) {

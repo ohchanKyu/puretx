@@ -20,6 +20,7 @@ import org.springframework.util.function.SingletonSupplier;
 public final class PuretxTransactionExecutionListener implements TransactionExecutionListener {
 
     private final Supplier<PuretxEngine> engineSupplier;
+
     private final String managerType;
 
     public PuretxTransactionExecutionListener(final Supplier<PuretxEngine> engineSupplier, final String managerType) {
@@ -33,8 +34,6 @@ public final class PuretxTransactionExecutionListener implements TransactionExec
         if (beginFailure != null || engine.settings().idle()) {
             return;
         }
-        // Only physical transactions get a scope. A method joining an existing transaction is
-        // still that transaction, and PROPAGATION_NESTED savepoints share it too.
         if (!transaction.isNewTransaction()) {
             return;
         }

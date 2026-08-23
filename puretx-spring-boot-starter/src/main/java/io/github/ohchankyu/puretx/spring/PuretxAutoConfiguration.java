@@ -66,7 +66,6 @@ public class PuretxAutoConfiguration {
             engine.addListener(new LoggingViolationListener());
         }
         listeners.orderedStream().forEach(engine::addListener);
-        // Makes Puretx.suppress(...) and Puretx.violations() work without injecting anything.
         Puretx.setEngine(engine);
 
         log.info("[puretx] {}", engine.settings().describe());
@@ -169,8 +168,7 @@ public class PuretxAutoConfiguration {
     static class FeignDetection {
 
         @Bean
-        PuretxFeignRequestInterceptor puretxFeignRequestInterceptor(final PuretxEngine engine,
-                final InstrumentationReport report) {
+        PuretxFeignRequestInterceptor puretxFeignRequestInterceptor(final PuretxEngine engine, final InstrumentationReport report) {
             return new PuretxFeignRequestInterceptor(engine, report);
         }
     }
