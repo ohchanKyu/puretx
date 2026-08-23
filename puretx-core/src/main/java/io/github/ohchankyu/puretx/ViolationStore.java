@@ -13,7 +13,9 @@ import java.util.List;
 public final class ViolationStore {
 
     private final int limit;
+
     private final Deque<Violation> recent = new ArrayDeque<>();
+
     private long total;
 
     public ViolationStore(final int limit) {

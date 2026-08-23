@@ -32,10 +32,8 @@ public final class PackagePatterns {
      */
     private static final String SUBPACKAGE_SUFFIX = "(\\..*)?";
 
-    /** Regex fragments are longer than the characters they replace; this avoids a resize or two. */
     private static final int REGEX_GROWTH_HEADROOM = 16;
 
-    /** Matches nothing. */
     public static final PackagePatterns NONE = new PackagePatterns(List.of());
 
     private final List<Pattern> patterns;
@@ -74,8 +72,6 @@ public final class PackagePatterns {
     }
 
     private static String toRegex(final String pattern) {
-        // A pattern with no wildcards is read the way people mean it: "com.acme.legacy" covers
-        // everything under that package, and "com.acme.OrderService" covers that one class.
         if (pattern.indexOf(StringUtils.ASTERISK) < 0 && pattern.indexOf(StringUtils.QUESTION_MARK) < 0) {
             return Pattern.quote(pattern) + SUBPACKAGE_SUFFIX;
         }

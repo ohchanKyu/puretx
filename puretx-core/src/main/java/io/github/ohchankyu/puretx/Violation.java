@@ -17,13 +17,14 @@ import java.util.List;
  * @param occurredAt     wall-clock time of detection
  */
 public record Violation(
-        ViolationType type,
-        String summary,
-        long durationMillis,
-        TransactionInfo transaction,
-        StackTraceElement origin,
-        List<StackTraceElement> callPath,
-        Instant occurredAt) {
+    ViolationType type,
+    String summary,
+    long durationMillis,
+    TransactionInfo transaction,
+    StackTraceElement origin,
+    List<StackTraceElement> callPath,
+    Instant occurredAt
+) {
 
     /** {@code durationMillis} when the operation was not, or could not be, timed. */
     public static final long UNKNOWN_DURATION = -1;

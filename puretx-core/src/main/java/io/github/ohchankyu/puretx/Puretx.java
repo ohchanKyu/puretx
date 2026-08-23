@@ -27,8 +27,7 @@ public final class Puretx {
 
     private static volatile PuretxEngine engine = PuretxEngine.disabled();
 
-    private Puretx() {
-    }
+    private Puretx() {}
 
     public static PuretxEngine engine() {
         return engine;

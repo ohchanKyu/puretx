@@ -24,8 +24,7 @@ public final class PuretxWebClientPostProcessor implements BeanPostProcessor {
 
     private final InstrumentationReport report;
 
-    public PuretxWebClientPostProcessor(final Supplier<PuretxEngine> engineSupplier,
-            final InstrumentationReport report) {
+    public PuretxWebClientPostProcessor(final Supplier<PuretxEngine> engineSupplier, final InstrumentationReport report) {
         this.filter = new PuretxExchangeFilterFunction(engineSupplier);
         this.report = report;
         report.watchingHttp();

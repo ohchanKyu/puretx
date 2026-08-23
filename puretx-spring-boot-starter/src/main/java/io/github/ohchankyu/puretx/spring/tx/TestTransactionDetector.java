@@ -11,18 +11,15 @@ package io.github.ohchankyu.puretx.spring.tx;
  */
 final class TestTransactionDetector {
 
-    private static final String LISTENER =
-            "org.springframework.test.context.transaction.TransactionalTestExecutionListener";
-    private static final String UTILS =
-            "org.springframework.test.context.transaction.TestContextTransactionUtils";
+    private static final String LISTENER = "org.springframework.test.context.transaction.TransactionalTestExecutionListener";
+    private static final String UTILS = "org.springframework.test.context.transaction.TestContextTransactionUtils";
 
     /** Cheap gate: in production spring-test is not on the classpath, so the walk never happens. */
     private static final boolean SPRING_TEST_PRESENT = isPresent(LISTENER);
 
     private static final int MAX_FRAMES = 64;
 
-    private TestTransactionDetector() {
-    }
+    private TestTransactionDetector() {}
 
     static boolean isTestManaged() {
         if (!SPRING_TEST_PRESENT) {

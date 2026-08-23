@@ -11,17 +11,27 @@ import java.util.stream.Collectors;
 public final class PuretxSettings {
 
     private final boolean enabled;
+
     private final PuretxMode mode;
+
     private final Duration maxDuration;
+
     private final List<String> ignore;
+
     private final List<String> appPackages;
+
     private final boolean includeCallPath;
+
     private final int callPathDepth;
+
     private final int recordLimit;
+
     private final boolean detectInTestTransactions;
+
     private final Set<ViolationType> detectors;
 
     private final long maxDurationMillis;
+
     private final boolean durationCheckEnabled;
 
     private PuretxSettings(final Builder b) {
@@ -199,8 +209,6 @@ public final class PuretxSettings {
         }
 
         public Builder detectors(final Set<ViolationType> detectors) {
-            // EnumSet.copyOf throws on an empty non-EnumSet collection: with no elements it cannot
-            // work out which enum type it is meant to hold.
             this.detectors = CollectionUtils.isEmpty(detectors)
                     ? EnumSet.noneOf(ViolationType.class)
                     : EnumSet.copyOf(detectors);

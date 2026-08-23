@@ -35,8 +35,7 @@ public final class PuretxRestClientPostProcessor implements BeanPostProcessor {
 
     private final InstrumentationReport report;
 
-    public PuretxRestClientPostProcessor(final Supplier<PuretxEngine> engineSupplier,
-            final InstrumentationReport report) {
+    public PuretxRestClientPostProcessor(final Supplier<PuretxEngine> engineSupplier, final InstrumentationReport report) {
         this.interceptor = new PuretxClientHttpRequestInterceptor(engineSupplier);
         this.report = report;
         report.watchingHttp();

@@ -14,12 +14,12 @@ import io.github.ohchankyu.puretx.internal.util.StringUtils;
  * @param managerType   simple class name of the transaction manager, or empty if unknown
  */
 public record TransactionInfo(
-        String name,
-        long elapsedMillis,
-        boolean readOnly,
-        boolean testManaged,
-        String managerType) {
-
+    String name,
+    long elapsedMillis,
+    boolean readOnly,
+    boolean testManaged,
+    String managerType
+) {
     /** Shown for a transaction started without a name, e.g. through TransactionTemplate. */
     private static final String UNNAMED = "<unnamed transaction>";
 

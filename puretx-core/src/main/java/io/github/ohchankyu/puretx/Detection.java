@@ -1,5 +1,6 @@
 package io.github.ohchankyu.puretx;
 
+import java.time.Instant;
 import java.util.List;
 
 /**
@@ -13,14 +14,24 @@ import java.util.List;
 public final class Detection {
 
     private final ViolationType type;
+
     private final String summary;
+
     private final TransactionInfo transaction;
+
     private final StackTraceElement origin;
+
     private final List<StackTraceElement> callPath;
+
     private final long startNanos;
 
-    Detection(final ViolationType type, final String summary, final TransactionInfo transaction,
-            final StackTraceElement origin, final List<StackTraceElement> callPath) {
+    Detection(
+        final ViolationType type,
+        final String summary,
+        final TransactionInfo transaction,
+        final StackTraceElement origin,
+        final List<StackTraceElement> callPath
+    ) {
         this.type = type;
         this.summary = summary;
         this.transaction = transaction;
@@ -46,7 +57,7 @@ public final class Detection {
         return (System.nanoTime() - startNanos) / 1_000_000L;
     }
 
-    Violation toViolation(final long durationMillis, final java.time.Instant occurredAt) {
+    Violation toViolation(final long durationMillis, final Instant occurredAt) {
         return new Violation(type, summary, durationMillis, transaction, origin, callPath, occurredAt);
     }
 }

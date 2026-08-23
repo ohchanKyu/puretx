@@ -6,13 +6,9 @@ import java.util.stream.Stream;
 
 /**
  * Finds the application frame responsible for a violation, and optionally keeps the stack around it.
- *
- * <p>This is what lets puretx point at {@code OrderService.createOrder:47} when the actual HTTP call
- * happens three helper classes deeper — the thing a static call-graph analysis cannot reliably do.
  */
 public final class StackCapture {
 
-    /** How far down the stack to look before giving up on finding an application frame. */
     private static final int MAX_SCAN = 96;
 
     private static final String PURETX_PREFIX = "io.github.ohchankyu.puretx.";
@@ -31,8 +27,7 @@ public final class StackCapture {
         "org.gradle.", "worker.org.gradle.",
     };
 
-    private StackCapture() {
-    }
+    private StackCapture() {}
 
     public record Result(StackTraceElement origin, List<StackTraceElement> callPath) {
         public static final Result EMPTY = new Result(null, List.of());
@@ -44,8 +39,11 @@ public final class StackCapture {
      * @param captureCallPath whether to keep the chain of application frames that led here
      * @param depth how many frames to keep when {@code captureCallPath} is set
      */
-    public static Result capture(final PackagePatterns appPackages, final boolean captureCallPath,
-            final int depth) {
+    public static Result capture(
+        final PackagePatterns appPackages,
+        final boolean captureCallPath,
+        final int depth
+    ) {
         return StackWalker.getInstance().walk(frames -> collect(frames, appPackages, captureCallPath, depth));
     }
 
@@ -55,16 +53,18 @@ public final class StackCapture {
      * <p>Converting a frame to a {@link StackTraceElement} resolves its file name and line number,
      * which is the expensive part; only the handful of frames actually kept are worth that.
      */
-    private static Result collect(final Stream<StackWalker.StackFrame> frames,
-            final PackagePatterns appPackages, final boolean captureCallPath, final int depth) {
+    private static Result collect(
+        final Stream<StackWalker.StackFrame> frames,
+        final PackagePatterns appPackages,
+        final boolean captureCallPath,
+        final int depth
+    ) {
         StackWalker.StackFrame origin = null;
         final List<StackWalker.StackFrame> path = captureCallPath ? new ArrayList<>(depth) : null;
         final List<StackWalker.StackFrame> fallback = captureCallPath ? new ArrayList<>(depth) : null;
 
         for (final StackWalker.StackFrame frame : (Iterable<StackWalker.StackFrame>) frames.limit(MAX_SCAN)::iterator) {
             final String className = frame.getClassName();
-            // puretx's own frames are never worth showing, but an explicit app-packages entry
-            // still wins — a project is entitled to any package name it likes.
             if (className.startsWith(PURETX_PREFIX) && !appPackages.matches(className)) {
                 continue;
             }
@@ -89,10 +89,7 @@ public final class StackCapture {
             }
         }
 
-        // Application frames only: service -> helper -> helper is the chain worth reading, and it
-        // is the chain a class-level dependency rule cannot follow. Framework frames only add noise.
-        final List<StackWalker.StackFrame> kept =
-                path == null ? List.of() : (path.isEmpty() ? fallback : path);
+        final List<StackWalker.StackFrame> kept = path == null ? List.of() : (path.isEmpty() ? fallback : path);
         return new Result(origin == null ? null : origin.toStackTraceElement(), toElements(kept));
     }
 

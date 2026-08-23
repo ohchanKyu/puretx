@@ -13,8 +13,7 @@ public final class TransactionScopeManager {
 
     private static final ThreadLocal<Deque<TransactionScope>> SCOPES = new ThreadLocal<>();
 
-    private TransactionScopeManager() {
-    }
+    private TransactionScopeManager() {}
 
     static void push(final TransactionScope scope) {
         Deque<TransactionScope> stack = SCOPES.get();
@@ -22,8 +21,6 @@ public final class TransactionScopeManager {
             stack = new ArrayDeque<>(4);
             SCOPES.set(stack);
         } else {
-            // Threads are pooled and reused. If a transaction ever finished without its completion
-            // callback reaching us, its scope would sit here for the life of the thread.
             stack.removeIf(TransactionScope::isFinished);
         }
         stack.push(scope);

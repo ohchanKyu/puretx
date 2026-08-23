@@ -24,7 +24,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 final class PuretxProducerProxy implements InvocationHandler {
 
     private final Producer<?, ?> target;
+
     private final PuretxEngine engine;
+
     private final Object producerFactory;
 
     private PuretxProducerProxy(final Producer<?, ?> target, final PuretxEngine engine, final Object producerFactory) {
@@ -34,8 +36,7 @@ final class PuretxProducerProxy implements InvocationHandler {
     }
 
     @SuppressWarnings("unchecked")
-    static <K, V> Producer<K, V> wrap(final Producer<K, V> target, final PuretxEngine engine,
-            final Object producerFactory) {
+    static <K, V> Producer<K, V> wrap(final Producer<K, V> target, final PuretxEngine engine, final Object producerFactory) {
         return (Producer<K, V>) Proxy.newProxyInstance(
                 Producer.class.getClassLoader(),
                 new Class<?>[] {Producer.class},
@@ -44,8 +45,10 @@ final class PuretxProducerProxy implements InvocationHandler {
 
     @Override
     public Object invoke(final Object proxy, final Method method, final Object[] args) throws Throwable {
-        if ("send".equals(method.getName()) && args.length > 0
-                && args[0] instanceof ProducerRecord<?, ?> record) {
+        if ("send".equals(method.getName())
+                && args.length > 0
+                && args[0] instanceof ProducerRecord<?, ?> record
+        ) {
             inspect(record);
         }
         try {
@@ -56,8 +59,6 @@ final class PuretxProducerProxy implements InvocationHandler {
     }
 
     private void inspect(final ProducerRecord<?, ?> record) {
-        // isWatching is a couple of field reads; the resource lookup below is a ThreadLocal map
-        // hit, so it goes second.
         if (!engine.isWatching(ViolationType.MESSAGE_PUBLISH) || isKafkaManagedTransaction()) {
             return;
         }

@@ -46,8 +46,7 @@ public final class PuretxClientHttpRequestInterceptor implements ClientHttpReque
     }
 
     @Override
-    public ClientHttpResponse intercept(final HttpRequest request, final byte[] body,
-            final ClientHttpRequestExecution execution) throws IOException {
+    public ClientHttpResponse intercept(final HttpRequest request, final byte[] body, final ClientHttpRequestExecution execution) throws IOException {
         final Detection detection =
                 engineSupplier.get().start(ViolationType.HTTP_CALL, () -> summarize(request));
         if (detection == null) {

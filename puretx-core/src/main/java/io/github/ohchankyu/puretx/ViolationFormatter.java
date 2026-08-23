@@ -13,10 +13,10 @@ import java.util.Locale;
 public final class ViolationFormatter {
 
     private static final String HEADER = "[puretx] IMPURE TRANSACTION detected";
+
     private static final String INDENT = "             ";
 
-    private ViolationFormatter() {
-    }
+    private ViolationFormatter() {}
 
     /** The multi-line report, without the call path. */
     public static String format(final Violation v) {
@@ -82,7 +82,7 @@ public final class ViolationFormatter {
         if (StringUtils.isNotBlank(tx.managerType())) {
             append(notes, tx.managerType());
         }
-        if (notes.length() > 0) {
+        if (!notes.isEmpty()) {
             sb.append(" (").append(notes).append(')');
         }
         return sb.toString();
@@ -98,7 +98,7 @@ public final class ViolationFormatter {
     }
 
     private static void append(final StringBuilder notes, final String text) {
-        if (notes.length() > 0) {
+        if (!notes.isEmpty()) {
             notes.append(", ");
         }
         notes.append(text);

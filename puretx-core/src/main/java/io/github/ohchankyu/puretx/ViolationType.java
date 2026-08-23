@@ -31,12 +31,19 @@ public enum ViolationType {
             true);
 
     private final String configKey;
+
     private final String displayName;
+
     private final String hint;
+
     private final boolean transactionItself;
 
-    ViolationType(final String configKey, final String displayName, final String hint,
-            final boolean transactionItself) {
+    ViolationType(
+        final String configKey,
+        final String displayName,
+        final String hint,
+        final boolean transactionItself
+    ) {
         this.configKey = configKey;
         this.displayName = displayName;
         this.hint = hint;

@@ -20,11 +20,15 @@ import java.util.function.Supplier;
 public final class PuretxEngine {
 
     private volatile PuretxSettings settings;
+
     private volatile PackagePatterns ignore;
+
     private volatile PackagePatterns appPackages;
+
     private volatile TransactionProbe probe;
 
     private final ViolationStore store;
+
     private final List<ViolationListener> listeners = new CopyOnWriteArrayList<>();
 
     public PuretxEngine(final PuretxSettings settings, final TransactionProbe probe) {
@@ -104,8 +108,6 @@ public final class PuretxEngine {
         if (tx.testManaged() && !s.detectInTestTransactions()) {
             return null;
         }
-        // Cheap half of the ignore check first: a transaction whose name is ignored should never
-        // pay for a stack walk.
         final PackagePatterns patterns = ignore;
         if (tx.hasName() && (patterns.matches(tx.name()) || patterns.matches(tx.declaringTypeName()))) {
             return null;
@@ -116,11 +118,9 @@ public final class PuretxEngine {
         if (capture.origin() != null && patterns.matches(capture.origin().getClassName())) {
             return null;
         }
-        final Detection detection =
-                new Detection(type, summary.get(), tx, capture.origin(), capture.callPath());
+        final Detection detection = new Detection(type, summary.get(), tx, capture.origin(), capture.callPath());
         if (s.mode() == PuretxMode.FAIL) {
-            throw new ImpureTransactionException(
-                    record(detection.toViolation(Violation.UNKNOWN_DURATION, Instant.now())));
+            throw new ImpureTransactionException(record(detection.toViolation(Violation.UNKNOWN_DURATION, Instant.now())));
         }
         return detection;
     }
@@ -155,30 +155,27 @@ public final class PuretxEngine {
      *
      * @param quiet suppress the {@link PuretxMode#FAIL} exception. Set on the rollback path, where
      *              throwing would mask the failure that caused the rollback in the first place
-     * @return whether anything was reported
      */
-    public boolean reportLongTransaction(final long elapsedMillis, final boolean quiet) {
+    public void reportLongTransaction(final long elapsedMillis, final boolean quiet) {
         final PuretxSettings s = settings;
         if (!isWatching(s, ViolationType.LONG_TRANSACTION) || !s.durationCheckEnabled()) {
-            return false;
+            return;
         }
         final long limit = s.maxDurationMillis();
         if (elapsedMillis < limit) {
-            return false;
+            return;
         }
         final Supplier<String> summary =
                 () -> String.format(Locale.ROOT, "transaction held past the %,dms limit", limit);
         try {
             final Detection detection = start(ViolationType.LONG_TRANSACTION, summary);
             if (detection == null) {
-                return false;
+                return;
             }
             record(detection.toViolation(elapsedMillis, Instant.now()));
-            return true;
         } catch (ImpureTransactionException ex) {
             if (quiet) {
-                // Already recorded and logged by record(); the throw is the only part we drop.
-                return true;
+                return;
             }
             throw ex;
         }
