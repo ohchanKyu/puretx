@@ -68,7 +68,8 @@ public class PuretxAutoConfiguration {
         if (properties.isLog()) {
             engine.addListener(new LoggingViolationListener());
         }
-        // First, so a call is attributed to its transaction before anything else sees the violation.
+        // After the logger on purpose. A call recorded once its transaction has already ended emits
+        // the summary from here, and the summary should follow the violations it explains.
         engine.addListener(TransactionScopeManager.callRecorder(() -> engine));
         listeners.orderedStream().forEach(engine::addListener);
         Puretx.setEngine(engine);

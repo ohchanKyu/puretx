@@ -94,6 +94,17 @@ class TransactionRollupTests {
     }
 
     @Test
+    @DisplayName("a call reported through Puretx.watch counts toward the summary like any other")
+    void countsWatchedCallsToo() {
+        orderService.createOrderWithWatchedSdkCall();
+
+        assertThat(summaries).singleElement().satisfies(summary -> {
+            assertThat(summary.displayName()).isEqualTo("OrderService.createOrderWithWatchedSdkCall");
+            assertThat(summary.callCount()).isEqualTo(1);
+        });
+    }
+
+    @Test
     @DisplayName("a transaction that did nothing wrong is not summarised at all")
     void staysQuietWhenThereIsNothingToExplain() {
         orderService.createOrderChargingAfterCommit(server.url());

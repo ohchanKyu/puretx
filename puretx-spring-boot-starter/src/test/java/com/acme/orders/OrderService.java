@@ -48,6 +48,14 @@ public class OrderService {
         restClientPaymentClient.charge(url);
     }
 
+    /** An SDK puretx cannot instrument, reported by the application itself. */
+    @Transactional
+    public void createOrderWithWatchedSdkCall() {
+        save();
+        Puretx.watch("Slack chat.postMessage", () -> sleep(30));
+    }
+
+
     /** A call whose client retries internally: the transaction is held for the whole sequence. */
     @Transactional
     public void createOrderWithRetryingClient(final String url) {
