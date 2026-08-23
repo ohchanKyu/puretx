@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -71,8 +72,6 @@ class PuretxEngineTests {
     @Test
     @DisplayName("an ignore pattern is matched against the class, not the method appended to it")
     void ignoreMatchesTheDeclaringClassOfATransaction() {
-        // A transaction is named FQCN + "." + method, one segment longer than the class a pattern
-        // is written against. The pattern is matched as written; the method segment is stripped.
         for (final String pattern : List.of(
                 "com.acme.orders",
                 "com.acme.orders.OrderService",
@@ -119,6 +118,30 @@ class PuretxEngineTests {
                 PuretxSettings.builder().detectInTestTransactions(true).build(), () -> testTransaction);
         on.report(ViolationType.HTTP_CALL, () -> "HTTP GET https://example.com");
         assertThat(on.store().all()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("the store keeps values, not the live object the probe handed over")
+    void doesNotRetainTheProbesSourceObject() {
+        final Object liveFrameworkObject = new Object();
+        final PuretxEngine engine = engine(PuretxSettings.builder().build(),
+                () -> new TransactionInfo("com.acme.orders.OrderService.createOrder", 12, false, false,
+                        "JdbcTransactionManager", liveFrameworkObject));
+        final List<Object> seenByListener = new ArrayList<>();
+        engine.addListener(violation -> seenByListener.add(violation.transaction().source()));
+
+        engine.report(ViolationType.HTTP_CALL, () -> "HTTP GET https://example.com");
+
+        assertThat(seenByListener).as("a listener acts and returns, so it gets the whole thing")
+                .containsExactly(liveFrameworkObject);
+        assertThat(engine.store().all()).singleElement().satisfies(violation -> {
+            assertThat(violation.transaction().source())
+                    .as("a stored violation outlives its transaction and must not pin it")
+                    .isNull();
+            assertThat(violation.transaction().name())
+                    .isEqualTo("com.acme.orders.OrderService.createOrder");
+            assertThat(violation.transaction().elapsedMillis()).isEqualTo(12);
+        });
     }
 
     @Test

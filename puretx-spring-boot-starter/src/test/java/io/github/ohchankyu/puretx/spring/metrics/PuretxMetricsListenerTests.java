@@ -3,6 +3,7 @@ package io.github.ohchankyu.puretx.spring.metrics;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.ohchankyu.puretx.TransactionInfo;
+import io.github.ohchankyu.puretx.TransactionSummary;
 import io.github.ohchankyu.puretx.Violation;
 import io.github.ohchankyu.puretx.ViolationType;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -57,6 +58,26 @@ class PuretxMetricsListenerTests {
         new PuretxMetricsListener(() -> null).onViolation(violation(ViolationType.HTTP_CALL, 10));
 
         assertThat(registry.getMeters()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("a transaction summary publishes the wait and the share it took")
+    void publishesTheTransactionSummary() {
+        new PuretxMetricsListener(() -> registry)
+                .onTransactionSummary(new TransactionSummary("com.acme.OrderService.placeOrder", 400, 2, 380));
+
+        assertThat(registry.timer(PuretxMetricsListener.WAIT).totalTime(TimeUnit.MILLISECONDS))
+                .isEqualTo(380);
+        assertThat(registry.summary(PuretxMetricsListener.SHARE).max()).isEqualTo(95);
+    }
+
+    @Test
+    @DisplayName("the summary meters carry no tags, so there is no cardinality to weigh up")
+    void keepsTheSummaryMetersUntagged() {
+        new PuretxMetricsListener(() -> registry)
+                .onTransactionSummary(new TransactionSummary("com.acme.OrderService.placeOrder", 400, 1, 100));
+
+        assertThat(registry.find(PuretxMetricsListener.WAIT).timer().getId().getTags()).isEmpty();
     }
 
     private static Violation violation(final ViolationType type, final long durationMillis) {

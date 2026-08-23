@@ -60,6 +60,13 @@ public class PuretxAutoConfiguration {
         return new SpringTransactionProbe();
     }
 
+    /**
+     * Builds the engine and attaches the listeners.
+     *
+     * <p>The call recorder goes on after the logging listener on purpose: a call recorded once its
+     * transaction has already ended emits the summary from there, and a summary should follow the
+     * violations it explains.
+     */
     @Bean
     @ConditionalOnMissingBean
     public PuretxEngine puretxEngine(final PuretxProperties properties, final TransactionProbe probe,
@@ -68,8 +75,6 @@ public class PuretxAutoConfiguration {
         if (properties.isLog()) {
             engine.addListener(new LoggingViolationListener());
         }
-        // After the logger on purpose. A call recorded once its transaction has already ended emits
-        // the summary from here, and the summary should follow the violations it explains.
         engine.addListener(TransactionScopeManager.callRecorder(() -> engine));
         listeners.orderedStream().forEach(engine::addListener);
         Puretx.setEngine(engine);

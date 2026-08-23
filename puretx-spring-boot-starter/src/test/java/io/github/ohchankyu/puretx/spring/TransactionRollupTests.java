@@ -84,8 +84,6 @@ class TransactionRollupTests {
     void attributesCallsRecordedOnAnotherThread() {
         orderService.createOrderWithWebClient(server.url());
 
-        // The scope travels with the violation, so the thread it lands on does not matter — and
-        // a call recorded after the transaction ended still produces the summary.
         await().atMost(Duration.ofSeconds(5)).untilAsserted(() ->
                 assertThat(summaries).singleElement().satisfies(summary -> {
                     assertThat(summary.displayName()).isEqualTo("OrderService.createOrderWithWebClient");
@@ -102,6 +100,19 @@ class TransactionRollupTests {
             assertThat(summary.displayName()).isEqualTo("OrderService.createOrderWithWatchedSdkCall");
             assertThat(summary.callCount()).isEqualTo(1);
         });
+    }
+
+    @Test
+    @DisplayName("a summary that arrives late still measures the transaction, not the wait for it")
+    void freezesTheTransactionLengthWhenItEnds() {
+        orderService.createOrderWithWebClient(server.url());
+
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> assertThat(summaries).hasSize(1));
+        final TransactionSummary summary = summaries.get(0);
+        assertThat(summary.transactionMillis())
+                .isLessThan(Duration.ofSeconds(5).toMillis())
+                .isGreaterThanOrEqualTo(summary.callMillis());
+        assertThat(summary.percentageSpentOnCalls()).isPositive();
     }
 
     @Test
