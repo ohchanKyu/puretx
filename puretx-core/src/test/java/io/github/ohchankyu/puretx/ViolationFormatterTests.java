@@ -89,6 +89,27 @@ class ViolationFormatterTests {
     }
 
     @Test
+    @DisplayName("a summary states the share of the transaction the calls took")
+    void formatsASummary() {
+        assertThat(ViolationFormatter.format(
+                new TransactionSummary("com.acme.orders.OrderService.placeOrder", 414, 1, 408)))
+                .isEqualTo("[puretx] OrderService.placeOrder held a transaction open for 414ms "
+                        + "— 408ms of it (99%) waiting on 1 external call");
+    }
+
+    @Test
+    @DisplayName("a summary with nothing timed does not claim the calls cost nothing")
+    void doesNotClaimZeroPercentWhenNothingWasTimed() {
+        final String line = ViolationFormatter.format(
+                new TransactionSummary("com.acme.orders.OrderService.publish", 348, 1, 0));
+
+        assertThat(line)
+                .doesNotContain("0ms of it (0%)")
+                .isEqualTo("[puretx] OrderService.publish held a transaction open for 348ms, "
+                        + "with 1 external call inside it");
+    }
+
+    @Test
     @DisplayName("the call path is appended only when one was captured")
     void appendsTheCallPathWhenPresent() {
         StackTraceElement frame =

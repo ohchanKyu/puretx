@@ -64,6 +64,19 @@ class KafkaDetectionTests {
     }
 
     @Test
+    @DisplayName("a send is timed, so a publish does not summarise as costing nothing")
+    void timesTheSend() {
+        final PuretxEngine engine = engine(PuretxMode.WARN, transactionActive());
+        final Producer<String, String> producer =
+                PuretxProducerProxy.wrap(slowProducer(30), engine, producerFactoryKey);
+
+        producer.send(new ProducerRecord<>("orders", "key", "payload"));
+
+        assertThat(engine.store().all()).singleElement().satisfies(violation ->
+                assertThat(violation.durationMillis()).isGreaterThanOrEqualTo(30));
+    }
+
+    @Test
     @DisplayName("a send with no transaction open is not reported")
     void ignoresSendOutsideTransaction() {
         PuretxEngine engine = engine(PuretxMode.WARN, TransactionProbe.NONE);
@@ -158,6 +171,22 @@ class KafkaDetectionTests {
 
     private static TransactionProbe transactionActive() {
         return () -> new TransactionInfo("com.acme.orders.OrderService.createOrder", 42, false, false, "");
+    }
+
+    /** Stands in for the metadata wait that makes a real send block for up to max.block.ms. */
+    @SuppressWarnings("unchecked")
+    private Producer<String, String> slowProducer(final long millis) {
+        return (Producer<String, String>) Proxy.newProxyInstance(
+                Producer.class.getClassLoader(),
+                new Class<?>[] {Producer.class},
+                (proxy, method, args) -> {
+                    if ("send".equals(method.getName())) {
+                        Thread.sleep(millis);
+                        sent.add((ProducerRecord<?, ?>) args[0]);
+                        return CompletableFuture.completedFuture(null);
+                    }
+                    return null;
+                });
     }
 
     @SuppressWarnings("unchecked")
