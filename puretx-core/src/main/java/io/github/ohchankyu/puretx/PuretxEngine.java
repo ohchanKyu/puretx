@@ -198,7 +198,10 @@ public final class PuretxEngine {
     }
 
     private Violation record(final Violation violation) {
-        store.add(violation);
+        // Listeners get the whole thing; the store keeps only values. A stored violation outlives
+        // its transaction, and the source is a live framework object — retaining a few hundred of
+        // them would pin that many connections and persistence contexts.
+        store.add(violation.withoutSource());
         for (ViolationListener listener : listeners) {
             try {
                 listener.onViolation(violation);

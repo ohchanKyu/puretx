@@ -256,6 +256,8 @@ log to grep:
 |---|---|
 | `puretx.violations` | how often, tagged `type` |
 | `puretx.violation.duration` | how long the offending operation took |
+| `puretx.transaction.external.wait` | per transaction, how long it waited in total |
+| `puretx.transaction.external.share` | what share of its life that was |
 
 Tagged by violation type only. The call site and transaction name stay in the log — they are
 unbounded as tags, and a metrics backend charges for cardinality. Switch it off with

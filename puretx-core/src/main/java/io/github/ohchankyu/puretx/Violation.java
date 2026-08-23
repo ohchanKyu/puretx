@@ -33,6 +33,12 @@ public record Violation(
         callPath = CollectionUtils.isEmpty(callPath) ? List.of() : List.copyOf(callPath);
     }
 
+    /** The same violation with the transaction's live framework object dropped. */
+    public Violation withoutSource() {
+        return new Violation(type, summary, durationMillis, transaction.withoutSource(),
+                origin, callPath, occurredAt);
+    }
+
     public boolean hasDuration() {
         return durationMillis > UNKNOWN_DURATION;
     }

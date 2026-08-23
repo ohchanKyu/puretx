@@ -105,6 +105,21 @@ class TransactionRollupTests {
     }
 
     @Test
+    @DisplayName("a summary that arrives late still measures the transaction, not the wait for it")
+    void freezesTheTransactionLengthWhenItEnds() {
+        orderService.createOrderWithWebClient(server.url());
+
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> assertThat(summaries).hasSize(1));
+        final TransactionSummary summary = summaries.get(0);
+        // The WebClient violation lands after the commit; measuring at that point would stretch the
+        // transaction by however long the recording took and quietly shrink the percentage.
+        assertThat(summary.transactionMillis())
+                .isLessThan(Duration.ofSeconds(5).toMillis())
+                .isGreaterThanOrEqualTo(summary.callMillis());
+        assertThat(summary.percentageSpentOnCalls()).isPositive();
+    }
+
+    @Test
     @DisplayName("a transaction that did nothing wrong is not summarised at all")
     void staysQuietWhenThereIsNothingToExplain() {
         orderService.createOrderChargingAfterCommit(server.url());

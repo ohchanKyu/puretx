@@ -1,5 +1,6 @@
 package io.github.ohchankyu.puretx.spring.metrics;
 
+import io.github.ohchankyu.puretx.TransactionSummary;
 import io.github.ohchankyu.puretx.Violation;
 import io.github.ohchankyu.puretx.ViolationListener;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -14,8 +15,9 @@ import org.springframework.util.function.SingletonSupplier;
  *
  * <ul>
  *   <li>{@code puretx.violations} — how often, so a trend is visible on a dashboard
- *   <li>{@code puretx.violation.duration} — how long the offending operation took, which adds up to
- *       the time transactions spent waiting on something outside the database
+ *   <li>{@code puretx.violation.duration} — how long the offending operation took
+ *   <li>{@code puretx.transaction.external.wait} — per transaction, how long it waited in total
+ *   <li>{@code puretx.transaction.external.share} — what share of its life that was
  * </ul>
  *
  * <p>The call site and the transaction name are deliberately not tags. Both are unbounded from the
@@ -28,12 +30,32 @@ public final class PuretxMetricsListener implements ViolationListener {
 
     static final String DURATION = "puretx.violation.duration";
 
+    static final String WAIT = "puretx.transaction.external.wait";
+
+    static final String SHARE = "puretx.transaction.external.share";
+
     private static final String TYPE_TAG = "type";
 
     private final Supplier<MeterRegistry> registry;
 
     public PuretxMetricsListener(final Supplier<MeterRegistry> registry) {
         this.registry = SingletonSupplier.of(registry);
+    }
+
+    /**
+     * Publishes the number this library exists to produce: how much of a transaction's life went
+     * on waiting for something outside the database, and what share of it that was.
+     *
+     * <p>Untagged, so there is no cardinality to weigh up at all.
+     */
+    @Override
+    public void onTransactionSummary(final TransactionSummary summary) {
+        final MeterRegistry meters = registry.get();
+        if (meters == null) {
+            return;
+        }
+        meters.timer(WAIT).record(summary.callMillis(), TimeUnit.MILLISECONDS);
+        meters.summary(SHARE).record(summary.percentageSpentOnCalls());
     }
 
     @Override

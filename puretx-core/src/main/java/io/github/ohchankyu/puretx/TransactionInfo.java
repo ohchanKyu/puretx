@@ -38,6 +38,18 @@ public record TransactionInfo(
     /** Used when a transaction is known to be active but nothing else about it could be resolved. */
     public static final TransactionInfo UNKNOWN = new TransactionInfo("", -1, false, false, "");
 
+    /**
+     * The same snapshot with {@link #source()} dropped.
+     *
+     * <p>The source is a live framework object — for Spring, the transaction status, and through it
+     * the connection holder and the persistence context. Fine to pass to a listener that acts and
+     * returns; not fine to keep. Anything that outlives the transaction stores this instead.
+     */
+    public TransactionInfo withoutSource() {
+        return source == null ? this
+                : new TransactionInfo(name, elapsedMillis, readOnly, testManaged, managerType, null);
+    }
+
     /** For a probe with nothing to hand back. */
     public TransactionInfo(final String name, final long elapsedMillis, final boolean readOnly,
             final boolean testManaged, final String managerType) {
