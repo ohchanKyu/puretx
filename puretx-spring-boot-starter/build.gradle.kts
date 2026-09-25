@@ -24,7 +24,9 @@ dependencies {
     compileOnly(baselineBom)
 
     api(project(":puretx-core"))
-    api("org.springframework.boot:spring-boot-autoconfigure:$springBootBaselineVersion")
+    // Runtime scope in the published POM: an application has its own Boot version and must not
+    // see this one as an API it compiles against.
+    implementation("org.springframework.boot:spring-boot-autoconfigure:$springBootBaselineVersion")
     api("org.springframework:spring-tx:6.1.0")
     api("org.springframework:spring-context:6.1.0")
 

@@ -5,7 +5,10 @@ import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.api.plugins.quality.CheckstyleExtension
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
+import org.gradle.api.tasks.bundling.Jar
+import org.gradle.api.tasks.javadoc.Javadoc
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
+import org.gradle.plugins.signing.SigningExtension
 
 val springBootVersion = project.property("springBootVersion") as String
 
@@ -45,12 +48,6 @@ subprojects {
         add("testRuntimeOnly", "org.junit.platform:junit-platform-launcher")
     }
 
-    extensions.configure<JavaPluginExtension> {
-        // Kept for JitPack and for IDE source navigation; the javadoc jar can come back
-        // whenever this is actually published.
-        withSourcesJar()
-    }
-
     tasks.withType<JavaCompile>().configureEach {
         options.release = 17
         options.encoding = "UTF-8"
@@ -66,18 +63,91 @@ subprojects {
     }
 }
 
-// Enough publishing to let somebody actually try this before it lives anywhere public:
-//   ./gradlew publishToMavenLocal   →  repositories { mavenLocal() } in their app.
-// It is also what JitPack needs. Signing, POM metadata and the Maven Central bundle can be
-// added back when there is a reason to release.
+// Everything a Maven Central release needs, wired so that it costs nothing until it is used:
+//   ./gradlew publishToMavenLocal          works with no keys, for JitPack and for trying it out
+//   SIGNING_KEY / SIGNING_PASSWORD set     signs the artifacts, which Central requires
+// Versions come from gradle.properties; a release overrides it with -Pversion=<tag without v>.
 configure(subprojects.filter { it.name != "puretx-sample" }) {
     apply(plugin = "maven-publish")
+    apply(plugin = "signing")
+
+    extensions.configure<JavaPluginExtension> {
+        withSourcesJar()
+        withJavadocJar()
+    }
+
+    tasks.withType<Javadoc>().configureEach {
+        // Lombok-generated accessors have no source for javadoc to see, and the starter's
+        // properties class is documented through the configuration metadata instead. Missing
+        // comments stay a warning; everything else doclint finds still fails the build.
+        (options as StandardJavadocDocletOptions).apply {
+            encoding = "UTF-8"
+            addBooleanOption("Xdoclint:all,-missing", true)
+            links("https://docs.oracle.com/en/java/javase/17/docs/api/")
+        }
+    }
+
+    // JPMS applications that put the jar on the module path get a stable module name rather
+    // than one derived from the file name.
+    val automaticModuleName = when (project.name) {
+        "puretx-core" -> "io.github.ohchankyu.puretx"
+        else -> "io.github.ohchankyu.puretx.spring"
+    }
+    tasks.withType<Jar>().configureEach {
+        manifest {
+            attributes(
+                "Automatic-Module-Name" to automaticModuleName,
+                "Implementation-Title" to project.name,
+                "Implementation-Version" to project.version,
+            )
+        }
+    }
 
     extensions.configure<PublishingExtension> {
         publications {
             create<MavenPublication>("maven") {
                 from(components["java"])
+
+                pom {
+                    name = project.name
+                    description = project.provider { project.description }
+                    url = "https://github.com/ohchanKyu/puretx"
+                    inceptionYear = "2026"
+                    licenses {
+                        license {
+                            name = "Apache License, Version 2.0"
+                            url = "https://www.apache.org/licenses/LICENSE-2.0"
+                            distribution = "repo"
+                        }
+                    }
+                    developers {
+                        developer {
+                            id = "ohchanKyu"
+                            name = "ohchanKyu"
+                            url = "https://github.com/ohchanKyu"
+                        }
+                    }
+                    scm {
+                        url = "https://github.com/ohchanKyu/puretx"
+                        connection = "scm:git:https://github.com/ohchanKyu/puretx.git"
+                        developerConnection = "scm:git:git@github.com:ohchanKyu/puretx.git"
+                    }
+                    issueManagement {
+                        system = "GitHub"
+                        url = "https://github.com/ohchanKyu/puretx/issues"
+                    }
+                }
             }
+        }
+    }
+
+    extensions.configure<SigningExtension> {
+        val signingKey = System.getenv("SIGNING_KEY")
+        val signingPassword = System.getenv("SIGNING_PASSWORD")
+        isRequired = !signingKey.isNullOrBlank()
+        if (isRequired) {
+            useInMemoryPgpKeys(signingKey, signingPassword)
+            sign(extensions.getByType<PublishingExtension>().publications["maven"])
         }
     }
 }

@@ -1,0 +1,79 @@
+name: release
+
+# A tag is a release. Pushing v1.2.3 builds and tests that commit against every supported
+# Spring Boot line, builds the artifacts under that version, and opens a GitHub release whose
+# notes are that version's section of the changelog. JitPack picks the tag up on its own.
+#
+# Secrets, optional: SIGNING_KEY and SIGNING_PASSWORD, an ASCII-armoured PGP private key and
+# its passphrase. With them the artifacts are signed, which is what Maven Central will require
+# once publishing there is switched on.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    name: java ${{ matrix.java }} / spring boot ${{ matrix.spring-boot }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        java: ['17', '21']
+        spring-boot: ['3.2.12', '3.5.16', '4.0.8', '4.1.1']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: ${{ matrix.java }}
+          distribution: temurin
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew build --no-daemon -PspringBootVersion=${{ matrix.spring-boot }}
+
+  release:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: temurin
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build artifacts
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+        run: ./gradlew publishToMavenLocal --no-daemon -x test -Pversion=${{ steps.version.outputs.version }}
+
+      - name: Release notes from the changelog
+        run: |
+          awk -v v="${{ steps.version.outputs.version }}" '
+            $0 ~ "^## \\[" v "\\]" { on = 1; next }
+            on && /^## \[/ { exit }
+            on { print }
+          ' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then
+            echo "No CHANGELOG section for ${{ steps.version.outputs.version }}; add one before tagging." >&2
+            exit 1
+          fi
+
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prerelease=""
+          case "${{ steps.version.outputs.version }}" in *-*) prerelease="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" $prerelease \
+            --title "puretx ${{ steps.version.outputs.version }}" \
+            --notes-file notes.md \
+            ~/.m2/repository/io/github/ohchankyu/puretx-core/${{ steps.version.outputs.version }}/*.jar \
+            ~/.m2/repository/io/github/ohchankyu/puretx-spring-boot-starter/${{ steps.version.outputs.version }}/*.jar
