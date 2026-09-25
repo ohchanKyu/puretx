@@ -47,6 +47,7 @@ dependencies {
     compileOnly("org.springframework:spring-web")
     compileOnly("org.springframework:spring-webflux")
     compileOnly("org.springframework.kafka:spring-kafka")
+    compileOnly("org.springframework.amqp:spring-rabbit")
     compileOnly("io.micrometer:micrometer-core")
     compileOnly("io.github.openfeign:feign-core:$feignVersion")
 
@@ -55,6 +56,7 @@ dependencies {
     testImplementation("org.springframework:spring-web")
     testImplementation("org.springframework:spring-webflux")
     testImplementation("org.springframework.kafka:spring-kafka")
+    testImplementation("org.springframework.amqp:spring-rabbit")
     testImplementation("io.micrometer:micrometer-core")
     testImplementation("io.github.openfeign:feign-core:$feignVersion")
     testImplementation("io.projectreactor:reactor-test")

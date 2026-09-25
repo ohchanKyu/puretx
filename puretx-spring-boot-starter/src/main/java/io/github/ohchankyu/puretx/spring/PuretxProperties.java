@@ -131,7 +131,7 @@ public class PuretxProperties {
         /** Outbound HTTP: RestTemplate, RestClient, WebClient, Feign. */
         private boolean http = true;
 
-        /** Message publishing: Kafka. */
+        /** Message publishing: Kafka and RabbitMQ. */
         private boolean messaging = true;
 
         /** Transactions held open beyond {@code puretx.max-duration}. */

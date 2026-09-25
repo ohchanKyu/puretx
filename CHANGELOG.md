@@ -9,6 +9,8 @@ change the API.
 
 ### Added
 
+- RabbitMQ detection: a publish through any `RabbitTemplate` bean inside a transaction is
+  reported, unless the template's transacted channel is synchronised with that transaction.
 - Spring Boot 4 support. The HTTP client customizers moved packages in Boot 4; puretx now
   declares each one for both Boot 3 and Boot 4 and uses whichever is on the classpath.
 - A `RestClientCustomizer`, so a `RestClient` built from the injected `RestClient.Builder` inside
