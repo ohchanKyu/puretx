@@ -13,10 +13,7 @@ import org.springframework.web.reactive.function.client.WebClient;
  * <p>A {@code WebClientCustomizer} only reaches builders that came from Boot's auto-configured
  * {@code WebClient.Builder} bean. A client built with the static {@code WebClient.builder()} or
  * {@code WebClient.create()} never passes through one — the same gap {@code RestClient} had.
- *
- * <p>Unlike {@code RestClient}, a {@code WebClient.Builder} can read back its own filters, so the
- * customizer can stay: a client that already carries the filter is left alone rather than
- * reporting every call twice.
+ * A client that already carries the filter is returned untouched rather than reported twice.
  */
 public final class PuretxWebClientPostProcessor implements BeanPostProcessor {
 
@@ -35,13 +32,11 @@ public final class PuretxWebClientPostProcessor implements BeanPostProcessor {
         if (!(bean instanceof WebClient webClient)) {
             return bean;
         }
+        final WebClient.Builder builder = webClient.mutate();
+        if (!filter.installOn(builder)) {
+            return bean;
+        }
         report.instrumented("WebClient");
-        return webClient.mutate()
-                .filters(filters -> {
-                    if (filters.stream().noneMatch(PuretxExchangeFilterFunction.class::isInstance)) {
-                        filters.add(0, filter);
-                    }
-                })
-                .build();
+        return builder.build();
     }
 }

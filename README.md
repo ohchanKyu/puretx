@@ -284,7 +284,9 @@ query counting. All three are somebody else's library.
 ## Requirements
 
 - Java 17+
-- Spring Boot 3.2+ (puretx uses `TransactionExecutionListener`, added in Spring Framework 6.1)
+- Spring Boot 3.2 or newer, including Boot 4 (puretx uses `TransactionExecutionListener`, added
+  in Spring Framework 6.1). CI runs the whole test suite against the oldest and newest Boot 3
+  and every Boot 4 line, so "supported" means "tested", not "probably fine".
 
 Transaction tracking covers any `AbstractPlatformTransactionManager` — JDBC, JPA, JTA, Kafka.
 Reactive transaction managers are not covered; puretx's detection is thread-bound.

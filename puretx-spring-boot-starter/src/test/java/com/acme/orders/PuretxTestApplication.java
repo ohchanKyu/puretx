@@ -2,8 +2,6 @@ package com.acme.orders;
 
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration;
-import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Primary;
@@ -11,32 +9,30 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.reactive.function.client.WebClient;
 
-/** Minimal application: an embedded H2 datasource, a transaction manager, and a RestTemplate. */
+/**
+ * Minimal application: an embedded H2 datasource, a transaction manager, and one of each HTTP
+ * client, every one built without Boot's builder beans so that the bean post-processors are
+ * what instruments them. The builder path is covered by {@code HttpClientBuilderTests}.
+ *
+ * <p>Nothing in here names a Spring Boot class that moved in Boot 4, because the same sources
+ * are run against every supported Boot version.
+ */
 @SpringBootConfiguration
-@EnableAutoConfiguration(exclude = KafkaAutoConfiguration.class)
+@EnableAutoConfiguration
 @ComponentScan
 public class PuretxTestApplication {
 
     @Bean
-    RestTemplate restTemplate(final RestTemplateBuilder builder) {
-        return builder.build();
+    RestTemplate restTemplate() {
+        return new RestTemplate();
     }
 
-    /**
-     * Built the way applications actually build one: the static factory, not the injected
-     * {@code RestClient.Builder} bean. No {@code RestClientCustomizer} is ever consulted for this,
-     * which is exactly the case puretx used to miss entirely.
-     */
     @Bean
     @Primary
     RestClient restClient() {
         return RestClient.builder().build();
     }
 
-    /**
-     * The static factory again, for the same reason as {@link #restClient()}: no
-     * {@code WebClientCustomizer} is consulted for a client built this way.
-     */
     /** A client that retries internally, the way production clients usually do. */
     @Bean
     RestClient retryingRestClient() {

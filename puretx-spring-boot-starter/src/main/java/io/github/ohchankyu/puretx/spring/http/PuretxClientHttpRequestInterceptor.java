@@ -3,6 +3,7 @@ package io.github.ohchankyu.puretx.spring.http;
 import io.github.ohchankyu.puretx.Detection;
 import io.github.ohchankyu.puretx.PuretxEngine;
 import io.github.ohchankyu.puretx.ViolationType;
+import io.github.ohchankyu.puretx.spring.InstrumentationReport;
 import java.io.IOException;
 import java.util.List;
 import java.util.function.Supplier;
@@ -12,6 +13,7 @@ import org.springframework.http.client.ClientHttpRequestExecution;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.util.function.SingletonSupplier;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestTemplate;
 
 /**
@@ -37,12 +39,47 @@ public final class PuretxClientHttpRequestInterceptor implements ClientHttpReque
         this.engineSupplier = SingletonSupplier.of(engineSupplier);
     }
 
-    /** Adds this interceptor to {@code restTemplate}, first in the chain, unless one is already there. */
-    public void installOn(final RestTemplate restTemplate) {
-        final List<ClientHttpRequestInterceptor> interceptors = restTemplate.getInterceptors();
-        if (interceptors.stream().noneMatch(PuretxClientHttpRequestInterceptor.class::isInstance)) {
-            interceptors.add(0, this);
+    /**
+     * Adds this interceptor to {@code restTemplate}, first in the chain, unless one is already there.
+     *
+     * @return whether it was added
+     */
+    public boolean installOn(final RestTemplate restTemplate) {
+        return installOn(restTemplate.getInterceptors());
+    }
+
+    /** {@link #installOn(RestTemplate)}, counted as a builder-made template in the startup report. */
+    public void installOn(final RestTemplate restTemplate, final InstrumentationReport report) {
+        if (installOn(restTemplate)) {
+            report.instrumented("RestTemplate.Builder");
         }
+    }
+
+    /**
+     * Adds this interceptor to what {@code builder} will build, first in the chain, unless one is
+     * already there.
+     *
+     * @return whether it was added
+     */
+    public boolean installOn(final RestClient.Builder builder) {
+        final boolean[] added = {false};
+        builder.requestInterceptors(interceptors -> added[0] = installOn(interceptors));
+        return added[0];
+    }
+
+    /** {@link #installOn(RestClient.Builder)}, counted as a builder-made client in the startup report. */
+    public void installOn(final RestClient.Builder builder, final InstrumentationReport report) {
+        if (installOn(builder)) {
+            report.instrumented("RestClient.Builder");
+        }
+    }
+
+    private boolean installOn(final List<ClientHttpRequestInterceptor> interceptors) {
+        if (interceptors.stream().anyMatch(PuretxClientHttpRequestInterceptor.class::isInstance)) {
+            return false;
+        }
+        interceptors.add(0, this);
+        return true;
     }
 
     @Override

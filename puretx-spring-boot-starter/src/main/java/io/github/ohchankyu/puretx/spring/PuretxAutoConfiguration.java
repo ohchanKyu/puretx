@@ -27,8 +27,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.boot.web.client.RestTemplateCustomizer;
-import org.springframework.boot.web.reactive.function.client.WebClientCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.core.ProducerFactory;
@@ -42,9 +40,16 @@ import org.springframework.web.reactive.function.client.WebClient;
  * Wires puretx into a Spring Boot application.
  *
  * <p>Everything below the engine is optional and conditional: an application without a Kafka
- * producer gets no Kafka detector, one without {@code spring-web} gets no HTTP detector. Nothing
- * in here replaces or proxies an application bean — the transaction managers get a listener,
- * the HTTP clients get an interceptor, and both keep their own type.
+ * producer gets no Kafka detector, one without {@code spring-web} gets no HTTP detector. The
+ * transaction managers get a listener and keep their identity. HTTP clients get an interceptor;
+ * {@code RestClient} and {@code WebClient} are immutable, so those two are rebuilt through
+ * {@code mutate()} with the interceptor added and everything else carried over.
+ *
+ * <p>Each HTTP client is reached twice: a {@code BeanPostProcessor} for clients registered as
+ * beans, however they were built, and a Boot customizer for clients built from an injected
+ * builder inside a constructor, which never become beans. Spring Boot 4 moved the customizer
+ * interfaces to new packages, so each one is declared twice under a class-name condition and
+ * whichever exists on the classpath is used.
  */
 @AutoConfiguration
 @ConditionalOnClass(PlatformTransactionManager.class)
@@ -113,15 +118,31 @@ public class PuretxAutoConfiguration {
         }
 
         @Bean
-        RestTemplateCustomizer puretxRestTemplateCustomizer(final PuretxClientHttpRequestInterceptor interceptor) {
-            return interceptor::installOn;
-        }
-
-        /** Covers {@code new RestTemplate()} beans, which never see the builder's customizers. */
-        @Bean
         static PuretxRestTemplatePostProcessor puretxRestTemplatePostProcessor(
                 final ObjectProvider<PuretxEngine> engine, final ObjectProvider<InstrumentationReport> report) {
             return new PuretxRestTemplatePostProcessor(lazy(engine), report.getObject());
+        }
+
+        @Configuration(proxyBeanMethods = false)
+        @ConditionalOnClass(name = "org.springframework.boot.web.client.RestTemplateCustomizer")
+        static class Boot3Customizer {
+
+            @Bean
+            org.springframework.boot.web.client.RestTemplateCustomizer puretxRestTemplateCustomizer(
+                    final PuretxClientHttpRequestInterceptor interceptor, final InstrumentationReport report) {
+                return template -> interceptor.installOn(template, report);
+            }
+        }
+
+        @Configuration(proxyBeanMethods = false)
+        @ConditionalOnClass(name = "org.springframework.boot.restclient.RestTemplateCustomizer")
+        static class Boot4Customizer {
+
+            @Bean
+            org.springframework.boot.restclient.RestTemplateCustomizer puretxRestTemplateCustomizer(
+                    final PuretxClientHttpRequestInterceptor interceptor, final InstrumentationReport report) {
+                return template -> interceptor.installOn(template, report);
+            }
         }
     }
 
@@ -134,6 +155,28 @@ public class PuretxAutoConfiguration {
         static PuretxRestClientPostProcessor puretxRestClientPostProcessor(
                 final ObjectProvider<PuretxEngine> engine, final ObjectProvider<InstrumentationReport> report) {
             return new PuretxRestClientPostProcessor(lazy(engine), report.getObject());
+        }
+
+        @Configuration(proxyBeanMethods = false)
+        @ConditionalOnClass(name = "org.springframework.boot.web.client.RestClientCustomizer")
+        static class Boot3Customizer {
+
+            @Bean
+            org.springframework.boot.web.client.RestClientCustomizer puretxRestClientCustomizer(
+                    final PuretxClientHttpRequestInterceptor interceptor, final InstrumentationReport report) {
+                return builder -> interceptor.installOn(builder, report);
+            }
+        }
+
+        @Configuration(proxyBeanMethods = false)
+        @ConditionalOnClass(name = "org.springframework.boot.restclient.RestClientCustomizer")
+        static class Boot4Customizer {
+
+            @Bean
+            org.springframework.boot.restclient.RestClientCustomizer puretxRestClientCustomizer(
+                    final PuretxClientHttpRequestInterceptor interceptor, final InstrumentationReport report) {
+                return builder -> interceptor.installOn(builder, report);
+            }
         }
     }
 
@@ -148,21 +191,31 @@ public class PuretxAutoConfiguration {
         }
 
         @Bean
-        WebClientCustomizer puretxWebClientCustomizer(final PuretxExchangeFilterFunction filter,
-                final InstrumentationReport report) {
-            return builder -> builder.filters(filters -> {
-                if (filters.stream().noneMatch(PuretxExchangeFilterFunction.class::isInstance)) {
-                    filters.add(0, filter);
-                    report.instrumented("WebClient.Builder");
-                }
-            });
-        }
-
-        /** Covers clients built by the static factory, which no customizer ever sees. */
-        @Bean
         static PuretxWebClientPostProcessor puretxWebClientPostProcessor(
                 final ObjectProvider<PuretxEngine> engine, final ObjectProvider<InstrumentationReport> report) {
             return new PuretxWebClientPostProcessor(lazy(engine), report.getObject());
+        }
+
+        @Configuration(proxyBeanMethods = false)
+        @ConditionalOnClass(name = "org.springframework.boot.web.reactive.function.client.WebClientCustomizer")
+        static class Boot3Customizer {
+
+            @Bean
+            org.springframework.boot.web.reactive.function.client.WebClientCustomizer puretxWebClientCustomizer(
+                    final PuretxExchangeFilterFunction filter, final InstrumentationReport report) {
+                return builder -> filter.installOn(builder, report);
+            }
+        }
+
+        @Configuration(proxyBeanMethods = false)
+        @ConditionalOnClass(name = "org.springframework.boot.webclient.WebClientCustomizer")
+        static class Boot4Customizer {
+
+            @Bean
+            org.springframework.boot.webclient.WebClientCustomizer puretxWebClientCustomizer(
+                    final PuretxExchangeFilterFunction filter, final InstrumentationReport report) {
+                return builder -> filter.installOn(builder, report);
+            }
         }
     }
 
