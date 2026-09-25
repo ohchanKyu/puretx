@@ -11,7 +11,7 @@ import org.springframework.util.function.SingletonSupplier;
 /**
  * Publishes every violation as a metric, so {@code WARN} mode in production is more than a log to grep.
  *
- * <p>Two meters, both tagged only by violation type:
+ * <p>Two meters per violation, tagged only by violation type, and two per transaction, untagged:
  *
  * <ul>
  *   <li>{@code puretx.violations} — how often, so a trend is visible on a dashboard

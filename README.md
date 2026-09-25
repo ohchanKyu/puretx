@@ -133,13 +133,26 @@ or wait for — the system it should not have been calling.
 | **Message publishing** | Kafka, via any `ProducerFactory` in the context |
 | **Long transactions** | any transaction held open past `puretx.max-duration` |
 
-Clients are instrumented as beans, however they were built — `new RestTemplate()`, the static
-`RestClient.builder()`, `WebClient.create()`, or an injected builder all work. A client
-constructed inside a method and never registered as a bean is the one case puretx cannot reach.
+Clients are instrumented however they were built: a bean made with `new RestTemplate()`, the
+static `RestClient.builder()` or `WebClient.create()` is reached through a bean post-processor,
+and a client built from an injected `RestTemplateBuilder`, `RestClient.Builder` or
+`WebClient.Builder` inside a constructor is reached through Boot's customizers.
 
-Only Spring's HTTP abstractions are covered. A vendor SDK that ships its own client — the Slack
-SDK, the AWS SDK — goes out over its own stack and is invisible here. Wrap the call to make it
-visible:
+### What it cannot see
+
+Detection is thread-bound and lives inside Spring's HTTP and messaging abstractions. Everything
+below goes past it, and none of it is reported:
+
+| | Why |
+|---|---|
+| A client built inside a method and thrown away | Never a bean, never a builder puretx customised |
+| JDK `HttpClient`, OkHttp, Apache HttpClient used directly | Not a Spring abstraction; nothing to intercept |
+| A vendor SDK with its own client — Slack, AWS, a payment provider's library | Same: it goes out over its own stack |
+| Work handed to `@Async`, a `TaskExecutor` or `CompletableFuture.supplyAsync` | The call runs on a thread that has no transaction, even though the caller's does |
+| A reactive transaction manager | The transaction is not bound to a thread, so there is no thread to ask |
+| Messaging other than Kafka | Not covered yet |
+
+The first three have the same fix: wrap the call so puretx can see it.
 
 ```java
 return Puretx.watch("Slack chat.postMessage",
@@ -249,10 +262,13 @@ await().atMost(Duration.ofSeconds(5))
 Nothing else needs this. `RestTemplate`, `RestClient`, Feign and Kafka all record on the calling
 thread before the call returns.
 
-and for sending them somewhere of your own — register a `ViolationListener` bean and puretx will
-call it for every violation.
+### Sending violations somewhere of your own
 
-With Micrometer on the classpath, two meters are published so `WARN` in production is more than a
+Register a `ViolationListener` bean and puretx calls it for every violation, and once more when
+a transaction that produced any ends, with the summary. Listeners run on the thread that hit the
+violation, so keep them cheap; anything they throw is swallowed.
+
+With Micrometer on the classpath, four meters are published so `WARN` in production is more than a
 log to grep:
 
 | | |
@@ -262,9 +278,9 @@ log to grep:
 | `puretx.transaction.external.wait` | per transaction, how long it waited in total |
 | `puretx.transaction.external.share` | what share of its life that was |
 
-Tagged by violation type only. The call site and transaction name stay in the log — they are
-unbounded as tags, and a metrics backend charges for cardinality. Switch it off with
-`puretx.metrics.enabled: false`.
+The first two are tagged by violation type; the transaction meters carry no tags at all. The
+call site and transaction name stay in the log — they are unbounded as tags, and a metrics
+backend charges for cardinality. Switch it off with `puretx.metrics.enabled: false`.
 
 ## What it deliberately does not do
 

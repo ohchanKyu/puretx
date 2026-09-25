@@ -114,8 +114,10 @@ public class PuretxProperties {
     public static class Metrics {
 
         /**
-         * Whether to publish {@code puretx.violations} and {@code puretx.violation.duration}.
-         * Tagged by violation type only — the call site and transaction name stay in the log,
+         * Whether to publish the violation meters ({@code puretx.violations},
+         * {@code puretx.violation.duration}) and the transaction meters
+         * ({@code puretx.transaction.external.wait}, {@code puretx.transaction.external.share}).
+         * Tagged by violation type at most — the call site and transaction name stay in the log,
          * where they cost nothing.
          */
         private boolean enabled = true;
