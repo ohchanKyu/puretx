@@ -38,7 +38,7 @@ jobs:
           distribution: temurin
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
 
       # `build` runs checkstyle and the tests. maxWarnings = 0 means a style
       # violation fails here too, not just locally.
