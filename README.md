@@ -130,7 +130,7 @@ or wait for — the system it should not have been calling.
 | | |
 |---|---|
 | **HTTP calls** | `RestTemplate`, `RestClient`, `WebClient` (when blocked on), Feign |
-| **Message publishing** | Kafka, via any `ProducerFactory` in the context |
+| **Message publishing** | Kafka, via any `ProducerFactory` in the context; RabbitMQ, via any `RabbitTemplate` |
 | **Long transactions** | any transaction held open past `puretx.max-duration` |
 
 Clients are instrumented however they were built: a bean made with `new RestTemplate()`, the
@@ -150,7 +150,7 @@ below goes past it, and none of it is reported:
 | A vendor SDK with its own client — Slack, AWS, a payment provider's library | Same: it goes out over its own stack |
 | Work handed to `@Async`, a `TaskExecutor` or `CompletableFuture.supplyAsync` | The call runs on a thread that has no transaction, even though the caller's does |
 | A reactive transaction manager | The transaction is not bound to a thread, so there is no thread to ask |
-| Messaging other than Kafka | Not covered yet |
+| Messaging other than Kafka and RabbitMQ: JMS, SQS, Redis pub/sub | Not covered yet |
 
 The first three have the same fix: wrap the call so puretx can see it.
 
@@ -206,6 +206,8 @@ those tests were written before the detection was:
 - Calls with no transaction open at all.
 - `REQUIRES_NEW`: the inner transaction is tracked separately, and the outer one resumes afterwards.
 - Publishing inside a Kafka-managed transaction — that is the transactional producer working as designed.
+- Publishing on a transacted `RabbitTemplate` channel synchronised with the transaction — the
+  channel commits after the database does, so a rollback takes the message back.
 - Transactions opened by Spring's TestContext framework around a `@Transactional` test.
 
 And when you have looked at a call and decided to keep it:
@@ -259,8 +261,12 @@ await().atMost(Duration.ofSeconds(5))
         .untilAsserted(() -> assertThat(engine.store().all()).hasSize(1));
 ```
 
-Nothing else needs this. `RestTemplate`, `RestClient`, Feign and Kafka all record on the calling
-thread before the call returns.
+Nothing else needs this. `RestTemplate`, `RestClient`, Feign, Kafka and RabbitMQ all record on the
+calling thread before the call returns.
+
+**A RabbitMQ publish fails as an `UncategorizedAmqpException` in `FAIL` mode.** `RabbitTemplate`
+wraps anything thrown before the publish, so the `ImpureTransactionException` is the cause. The
+call still fails at the call site before the message leaves.
 
 ### Sending violations somewhere of your own
 

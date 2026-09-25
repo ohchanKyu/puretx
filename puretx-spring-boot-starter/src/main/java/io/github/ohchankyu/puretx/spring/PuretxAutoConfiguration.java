@@ -6,6 +6,7 @@ import io.github.ohchankyu.puretx.Puretx;
 import io.github.ohchankyu.puretx.PuretxEngine;
 import io.github.ohchankyu.puretx.TransactionProbe;
 import io.github.ohchankyu.puretx.ViolationListener;
+import io.github.ohchankyu.puretx.spring.amqp.PuretxRabbitTemplatePostProcessor;
 import io.github.ohchankyu.puretx.spring.http.PuretxClientHttpRequestInterceptor;
 import io.github.ohchankyu.puretx.spring.http.PuretxExchangeFilterFunction;
 import io.github.ohchankyu.puretx.spring.http.PuretxFeignRequestInterceptor;
@@ -21,6 +22,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -265,6 +267,19 @@ public class PuretxAutoConfiguration {
         static PuretxProducerFactoryPostProcessor puretxProducerFactoryPostProcessor(
                 final ObjectProvider<PuretxEngine> engine, final ObjectProvider<InstrumentationReport> report) {
             return new PuretxProducerFactoryPostProcessor(lazy(engine), report.getObject());
+        }
+    }
+
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnClass(RabbitTemplate.class)
+    @ConditionalOnProperty(prefix = "puretx.detectors", name = "messaging", havingValue = "true",
+            matchIfMissing = true)
+    static class RabbitDetection {
+
+        @Bean
+        static PuretxRabbitTemplatePostProcessor puretxRabbitTemplatePostProcessor(
+                final ObjectProvider<PuretxEngine> engine, final ObjectProvider<InstrumentationReport> report) {
+            return new PuretxRabbitTemplatePostProcessor(lazy(engine), report.getObject());
         }
     }
 }
