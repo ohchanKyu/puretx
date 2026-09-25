@@ -3,6 +3,7 @@ package io.github.ohchankyu.puretx.internal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Finds the application frame responsible for a violation, and optionally keeps the stack around it.
@@ -29,7 +30,7 @@ public final class StackCapture {
 
     private StackCapture() {}
 
-    public record Result(StackTraceElement origin, List<StackTraceElement> callPath) {
+    public record Result(@Nullable StackTraceElement origin, List<StackTraceElement> callPath) {
         public static final Result EMPTY = new Result(null, List.of());
     }
 
@@ -59,9 +60,9 @@ public final class StackCapture {
         final boolean captureCallPath,
         final int depth
     ) {
-        StackWalker.StackFrame origin = null;
-        final List<StackWalker.StackFrame> path = captureCallPath ? new ArrayList<>(depth) : null;
-        final List<StackWalker.StackFrame> fallback = captureCallPath ? new ArrayList<>(depth) : null;
+        StackWalker.@Nullable StackFrame origin = null;
+        final @Nullable List<StackWalker.StackFrame> path = captureCallPath ? new ArrayList<>(depth) : null;
+        final @Nullable List<StackWalker.StackFrame> fallback = captureCallPath ? new ArrayList<>(depth) : null;
 
         for (final StackWalker.StackFrame frame : (Iterable<StackWalker.StackFrame>) frames.limit(MAX_SCAN)::iterator) {
             final String className = frame.getClassName();

@@ -5,6 +5,7 @@ import io.github.ohchankyu.puretx.internal.util.StringUtils;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Ant-flavoured matching for class names: {@code com.acme.legacy.**}, {@code com.acme.*.OrderService},
@@ -42,7 +43,7 @@ public final class PackagePatterns {
         this.patterns = patterns;
     }
 
-    public static PackagePatterns of(final List<String> raw) {
+    public static PackagePatterns of(final @Nullable List<String> raw) {
         if (CollectionUtils.isEmpty(raw)) {
             return NONE;
         }
@@ -59,7 +60,7 @@ public final class PackagePatterns {
         return patterns.isEmpty();
     }
 
-    public boolean matches(final String className) {
+    public boolean matches(final @Nullable String className) {
         if (patterns.isEmpty() || StringUtils.isEmpty(className)) {
             return false;
         }

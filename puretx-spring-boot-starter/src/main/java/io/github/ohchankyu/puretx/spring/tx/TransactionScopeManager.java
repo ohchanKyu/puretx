@@ -5,6 +5,7 @@ import io.github.ohchankyu.puretx.ViolationListener;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.function.Supplier;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The per-thread stack of open transaction scopes.
@@ -35,7 +36,7 @@ public final class TransactionScopeManager {
     }
 
     /** The innermost open transaction on this thread, or {@code null}. */
-    public static TransactionScope current() {
+    public static @Nullable TransactionScope current() {
         Deque<TransactionScope> stack = SCOPES.get();
         return stack == null ? null : stack.peek();
     }

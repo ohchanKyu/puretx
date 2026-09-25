@@ -2,6 +2,7 @@ package io.github.ohchankyu.puretx.spring.tx;
 
 import io.github.ohchankyu.puretx.TransactionInfo;
 import io.github.ohchankyu.puretx.TransactionProbe;
+import org.jspecify.annotations.Nullable;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
@@ -15,7 +16,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 public final class SpringTransactionProbe implements TransactionProbe {
 
     @Override
-    public TransactionInfo currentTransaction() {
+    public @Nullable TransactionInfo currentTransaction() {
         if (!TransactionSynchronizationManager.isActualTransactionActive()) {
             return null;
         }

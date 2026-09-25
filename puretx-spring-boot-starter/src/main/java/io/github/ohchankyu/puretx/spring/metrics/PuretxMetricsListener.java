@@ -6,6 +6,7 @@ import io.github.ohchankyu.puretx.ViolationListener;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
+import org.jspecify.annotations.Nullable;
 import org.springframework.util.function.SingletonSupplier;
 
 /**
@@ -36,9 +37,9 @@ public final class PuretxMetricsListener implements ViolationListener {
 
     private static final String TYPE_TAG = "type";
 
-    private final Supplier<MeterRegistry> registry;
+    private final Supplier<@Nullable MeterRegistry> registry;
 
-    public PuretxMetricsListener(final Supplier<MeterRegistry> registry) {
+    public PuretxMetricsListener(final Supplier<@Nullable MeterRegistry> registry) {
         this.registry = SingletonSupplier.of(registry);
     }
 

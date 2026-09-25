@@ -2,6 +2,7 @@ package io.github.ohchankyu.puretx.spring.tx;
 
 import io.github.ohchankyu.puretx.PuretxEngine;
 import java.util.function.Supplier;
+import org.jspecify.annotations.Nullable;
 import org.springframework.transaction.TransactionExecution;
 import org.springframework.transaction.TransactionExecutionListener;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -29,7 +30,7 @@ public final class PuretxTransactionExecutionListener implements TransactionExec
     }
 
     @Override
-    public void afterBegin(final TransactionExecution transaction, final Throwable beginFailure) {
+    public void afterBegin(final TransactionExecution transaction, final @Nullable Throwable beginFailure) {
         PuretxEngine engine = engineSupplier.get();
         if (beginFailure != null || engine.settings().idle()) {
             return;
@@ -51,12 +52,12 @@ public final class PuretxTransactionExecutionListener implements TransactionExec
     }
 
     @Override
-    public void afterCommit(final TransactionExecution transaction, final Throwable commitFailure) {
+    public void afterCommit(final TransactionExecution transaction, final @Nullable Throwable commitFailure) {
         complete(transaction);
     }
 
     @Override
-    public void afterRollback(final TransactionExecution transaction, final Throwable rollbackFailure) {
+    public void afterRollback(final TransactionExecution transaction, final @Nullable Throwable rollbackFailure) {
         complete(transaction);
     }
 

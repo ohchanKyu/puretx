@@ -6,6 +6,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.jspecify.annotations.Nullable;
 
 /** Immutable configuration for a {@link PuretxEngine}. */
 public final class PuretxSettings {
@@ -14,7 +15,7 @@ public final class PuretxSettings {
 
     private final PuretxMode mode;
 
-    private final Duration maxDuration;
+    private final @Nullable Duration maxDuration;
 
     private final List<String> ignore;
 
@@ -72,7 +73,7 @@ public final class PuretxSettings {
     }
 
     /** @return the threshold above which a transaction is reported, or {@code null} when disabled */
-    public Duration maxDuration() {
+    public @Nullable Duration maxDuration() {
         return maxDuration;
     }
 
@@ -154,7 +155,7 @@ public final class PuretxSettings {
 
         private boolean enabled = true;
         private PuretxMode mode = PuretxMode.WARN;
-        private Duration maxDuration = Duration.ofSeconds(3);
+        private @Nullable Duration maxDuration = Duration.ofSeconds(3);
         private List<String> ignore = List.of();
         private List<String> appPackages = List.of();
         private boolean includeCallPath = true;
@@ -168,22 +169,22 @@ public final class PuretxSettings {
             return this;
         }
 
-        public Builder mode(final PuretxMode mode) {
+        public Builder mode(final @Nullable PuretxMode mode) {
             this.mode = mode == null ? PuretxMode.OFF : mode;
             return this;
         }
 
-        public Builder maxDuration(final Duration maxDuration) {
+        public Builder maxDuration(final @Nullable Duration maxDuration) {
             this.maxDuration = maxDuration;
             return this;
         }
 
-        public Builder ignore(final List<String> ignore) {
+        public Builder ignore(final @Nullable List<String> ignore) {
             this.ignore = CollectionUtils.isEmpty(ignore) ? List.of() : ignore;
             return this;
         }
 
-        public Builder appPackages(final List<String> appPackages) {
+        public Builder appPackages(final @Nullable List<String> appPackages) {
             this.appPackages = CollectionUtils.isEmpty(appPackages) ? List.of() : appPackages;
             return this;
         }
@@ -208,7 +209,7 @@ public final class PuretxSettings {
             return this;
         }
 
-        public Builder detectors(final Set<ViolationType> detectors) {
+        public Builder detectors(final @Nullable Set<ViolationType> detectors) {
             this.detectors = CollectionUtils.isEmpty(detectors)
                     ? EnumSet.noneOf(ViolationType.class)
                     : EnumSet.copyOf(detectors);
