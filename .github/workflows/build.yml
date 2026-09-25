@@ -15,14 +15,17 @@ concurrency:
 
 jobs:
   build:
+    name: java ${{ matrix.java }} / spring boot ${{ matrix.spring-boot }}
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
       matrix:
-        # The README promises Java 17+. Building on both is what keeps that true:
-        # the code targets 17, and 21 is what most people will actually run it on.
+        # The README promises Java 17+ and Spring Boot 3.2+. Every cell here is a version of that
+        # promise being checked: the oldest Boot 3, the newest Boot 3, and each Boot 4 line, on
+        # the oldest Java the code targets and the one most people actually run it on.
         java: ['17', '21']
+        spring-boot: ['3.2.12', '3.5.16', '4.0.8', '4.1.1']
 
     steps:
       - uses: actions/checkout@v4
@@ -39,13 +42,13 @@ jobs:
       # `build` runs checkstyle and the tests. maxWarnings = 0 means a style
       # violation fails here too, not just locally.
       - name: Build
-        run: ./gradlew build --no-daemon
+        run: ./gradlew build --no-daemon -PspringBootVersion=${{ matrix.spring-boot }}
 
       - name: Upload reports
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: reports-java-${{ matrix.java }}
+          name: reports-java-${{ matrix.java }}-boot-${{ matrix.spring-boot }}
           path: |
             **/build/reports/tests/
             **/build/reports/checkstyle/
