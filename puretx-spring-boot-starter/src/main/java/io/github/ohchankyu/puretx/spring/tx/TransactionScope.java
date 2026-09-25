@@ -6,6 +6,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.Getter;
+import org.jspecify.annotations.Nullable;
 import org.springframework.transaction.TransactionExecution;
 
 /**
@@ -125,7 +126,7 @@ public final class TransactionScope {
      * and again by a call that was recorded after that — a reactive client completes on its own
      * thread and can land after the commit has been and gone.
      */
-    TransactionSummary summarise() {
+    @Nullable TransactionSummary summarise() {
         final int calls = callCount.get();
         if (calls == 0 || !summaryReported.compareAndSet(false, true)) {
             return null;

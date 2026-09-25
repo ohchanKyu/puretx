@@ -1,6 +1,7 @@
 package io.github.ohchankyu.puretx;
 
 import io.github.ohchankyu.puretx.internal.util.StringUtils;
+import org.jspecify.annotations.Nullable;
 
 /**
  * An immutable snapshot of the transaction that was open when a violation happened.
@@ -19,7 +20,7 @@ public record TransactionInfo(
     boolean readOnly,
     boolean testManaged,
     String managerType,
-    Object source
+    @Nullable Object source
 ) {
     /**
      * Whatever the probe wants handed back to it later, or {@code null}.
@@ -28,7 +29,7 @@ public record TransactionInfo(
      * framework can recognise its own transaction again when a violation is recorded on a
      * different thread from the one that started it — which is what a reactive client does.
      */
-    public Object source() {
+    public @Nullable Object source() {
         return source;
     }
 

@@ -2,6 +2,7 @@ package io.github.ohchankyu.puretx;
 
 import java.time.Instant;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A violation that has been identified but not yet timed.
@@ -19,7 +20,7 @@ public final class Detection {
 
     private final TransactionInfo transaction;
 
-    private final StackTraceElement origin;
+    private final @Nullable StackTraceElement origin;
 
     private final List<StackTraceElement> callPath;
 
@@ -29,7 +30,7 @@ public final class Detection {
         final ViolationType type,
         final String summary,
         final TransactionInfo transaction,
-        final StackTraceElement origin,
+        final @Nullable StackTraceElement origin,
         final List<StackTraceElement> callPath
     ) {
         this.type = type;

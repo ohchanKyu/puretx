@@ -9,6 +9,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.jspecify.annotations.Nullable;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
@@ -45,8 +46,9 @@ final class PuretxProducerProxy implements InvocationHandler {
     }
 
     @Override
-    public Object invoke(final Object proxy, final Method method, final Object[] args) throws Throwable {
+    public @Nullable Object invoke(final Object proxy, final Method method, final Object @Nullable [] args) throws Throwable {
         if ("send".equals(method.getName())
+                && args != null
                 && args.length > 0
                 && args[0] instanceof ProducerRecord<?, ?> record
         ) {
@@ -64,7 +66,7 @@ final class PuretxProducerProxy implements InvocationHandler {
      * saying a publish cost 0% of the transaction, which reads as "nothing to see here" for the
      * one violation a rollback cannot take back.
      */
-    private Object send(final Method method, final Object[] args, final ProducerRecord<?, ?> record)
+    private @Nullable Object send(final Method method, final Object[] args, final ProducerRecord<?, ?> record)
             throws Throwable {
         final Detection detection = detect(record);
         if (detection == null) {
@@ -77,7 +79,7 @@ final class PuretxProducerProxy implements InvocationHandler {
         }
     }
 
-    private Object invokeTarget(final Method method, final Object[] args) throws Throwable {
+    private @Nullable Object invokeTarget(final Method method, final Object @Nullable [] args) throws Throwable {
         try {
             return method.invoke(target, args);
         } catch (InvocationTargetException ex) {
@@ -85,7 +87,7 @@ final class PuretxProducerProxy implements InvocationHandler {
         }
     }
 
-    private Detection detect(final ProducerRecord<?, ?> record) {
+    private @Nullable Detection detect(final ProducerRecord<?, ?> record) {
         if (!engine.isWatching(ViolationType.MESSAGE_PUBLISH) || isKafkaManagedTransaction()) {
             return null;
         }

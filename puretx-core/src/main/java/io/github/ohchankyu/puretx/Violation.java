@@ -3,6 +3,7 @@ package io.github.ohchankyu.puretx;
 import io.github.ohchankyu.puretx.internal.util.CollectionUtils;
 import java.time.Instant;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 
 /**
  * One detected piece of impure work.
@@ -21,7 +22,7 @@ public record Violation(
     String summary,
     long durationMillis,
     TransactionInfo transaction,
-    StackTraceElement origin,
+    @Nullable StackTraceElement origin,
     List<StackTraceElement> callPath,
     Instant occurredAt
 ) {

@@ -1,5 +1,7 @@
 package io.github.ohchankyu.puretx.internal.util;
 
+import org.jspecify.annotations.Nullable;
+
 public final class StringUtils {
 
     public static final char ASTERISK = '*';
@@ -12,11 +14,11 @@ public final class StringUtils {
 
     private StringUtils() {}
 
-    public static boolean isEmpty(final String str) {
+    public static boolean isEmpty(final @Nullable String str) {
         return str == null || str.isEmpty();
     }
 
-    public static boolean isBlank(final String str) {
+    public static boolean isBlank(final @Nullable String str) {
         return str == null || str.isBlank();
     }
 
@@ -24,7 +26,7 @@ public final class StringUtils {
         return !isBlank(str);
     }
 
-    public static String defaultString(final String str) {
+    public static String defaultString(final @Nullable String str) {
         return str == null ? EMPTY : str;
     }
 }

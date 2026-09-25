@@ -20,6 +20,10 @@ change the API.
   Java 17 and 21.
 - Javadoc jars, POM metadata and optional artifact signing, everything a Maven Central release
   needs.
+- JSpecify nullness annotations. Every package is `@NullMarked`; the handful of things that can
+  be `null` — a `TransactionProbe` result, `PuretxEngine.start`, `Violation.origin`,
+  `TransactionInfo.source` — say so. `org.jspecify:jspecify` is an API dependency of
+  `puretx-core`, the same choice Spring Framework 7 made.
 - `Automatic-Module-Name` in both jars: `io.github.ohchankyu.puretx` and
   `io.github.ohchankyu.puretx.spring`.
 

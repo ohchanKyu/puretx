@@ -1,5 +1,7 @@
 package io.github.ohchankyu.puretx;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * Tells the engine whether the calling thread is inside a transaction that puretx should police.
  *
@@ -20,5 +22,5 @@ public interface TransactionProbe {
      * @return a snapshot of the transaction currently open on this thread, or {@code null}
      *         if there is none, or if the thread is somewhere puretx should stay quiet.
      */
-    TransactionInfo currentTransaction();
+    @Nullable TransactionInfo currentTransaction();
 }

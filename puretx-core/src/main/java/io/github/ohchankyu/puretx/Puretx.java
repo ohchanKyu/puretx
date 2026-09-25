@@ -3,6 +3,7 @@ package io.github.ohchankyu.puretx;
 import io.github.ohchankyu.puretx.internal.Suppressions;
 import java.util.List;
 import java.util.function.Supplier;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Static entry point to puretx.
@@ -34,7 +35,7 @@ public final class Puretx {
     }
 
     /** Installed by the Spring Boot starter at startup. */
-    public static void setEngine(final PuretxEngine engine) {
+    public static void setEngine(final @Nullable PuretxEngine engine) {
         Puretx.engine = engine == null ? PuretxEngine.disabled() : engine;
     }
 
@@ -54,7 +55,7 @@ public final class Puretx {
     }
 
     /** {@link #suppress(Runnable)} for calls that return something. */
-    public static <T> T suppress(final Supplier<T> action) {
+    public static <T extends @Nullable Object> T suppress(final Supplier<T> action) {
         Suppressions.enter();
         try {
             return action.get();
@@ -79,7 +80,7 @@ public final class Puretx {
      * <p>Costs nothing when there is no transaction open, and behaves like every other detector:
      * it logs in {@code WARN} and throws before the call in {@code FAIL}.
      */
-    public static <T> T watch(final String description, final Supplier<T> call) {
+    public static <T extends @Nullable Object> T watch(final String description, final Supplier<T> call) {
         return watch(ViolationType.HTTP_CALL, description, call);
     }
 
@@ -92,7 +93,7 @@ public final class Puretx {
     }
 
     /** {@link #watch(String, Supplier)} for something other than an HTTP call — a publish, say. */
-    public static <T> T watch(final ViolationType type, final String description, final Supplier<T> call) {
+    public static <T extends @Nullable Object> T watch(final ViolationType type, final String description, final Supplier<T> call) {
         final Detection detection = engine.start(type, () -> description);
         if (detection == null) {
             return call.get();

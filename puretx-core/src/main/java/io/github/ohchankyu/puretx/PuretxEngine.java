@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Supplier;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The part of puretx that decides whether something is a violation, and what to do about it.
@@ -31,7 +32,7 @@ public final class PuretxEngine {
 
     private final List<ViolationListener> listeners = new CopyOnWriteArrayList<>();
 
-    public PuretxEngine(final PuretxSettings settings, final TransactionProbe probe) {
+    public PuretxEngine(final PuretxSettings settings, final @Nullable TransactionProbe probe) {
         this.store = new ViolationStore(settings.recordLimit());
         this.probe = probe == null ? TransactionProbe.NONE : probe;
         applySettings(settings);
@@ -52,7 +53,7 @@ public final class PuretxEngine {
         this.appPackages = PackagePatterns.of(settings.appPackages());
     }
 
-    public void setProbe(final TransactionProbe probe) {
+    public void setProbe(final @Nullable TransactionProbe probe) {
         this.probe = probe == null ? TransactionProbe.NONE : probe;
     }
 
@@ -64,7 +65,7 @@ public final class PuretxEngine {
         return store;
     }
 
-    public void addListener(final ViolationListener listener) {
+    public void addListener(final @Nullable ViolationListener listener) {
         if (listener != null) {
             listeners.add(listener);
         }
@@ -96,7 +97,7 @@ public final class PuretxEngine {
      * @return a token to hand to {@link #finish}, or {@code null} if this is not a violation
      * @throws ImpureTransactionException in {@link PuretxMode#FAIL}, before the operation runs
      */
-    public Detection start(final ViolationType type, final Supplier<String> summary) {
+    public @Nullable Detection start(final ViolationType type, final Supplier<String> summary) {
         final PuretxSettings s = settings;
         if (!isWatching(s, type)) {
             return null;
@@ -129,7 +130,7 @@ public final class PuretxEngine {
      * Records the detection started earlier, timed from when {@link #start} returned it.
      * Does nothing when {@code detection} is {@code null}.
      */
-    public void finish(final Detection detection) {
+    public void finish(final @Nullable Detection detection) {
         if (detection != null) {
             record(detection.toViolation(detection.elapsedMillis(), Instant.now()));
         }

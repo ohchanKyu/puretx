@@ -4,6 +4,7 @@ import io.github.ohchankyu.puretx.PuretxEngine;
 import io.github.ohchankyu.puretx.ViolationType;
 import io.github.ohchankyu.puretx.spring.InstrumentationReport;
 import java.util.function.Supplier;
+import org.jspecify.annotations.Nullable;
 import org.springframework.amqp.core.Correlation;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessagePostProcessor;
@@ -91,7 +92,7 @@ public final class PuretxRabbitTemplatePostProcessor implements BeanPostProcesso
         }
 
         @Override
-        public Message postProcessMessage(final Message message, final Correlation correlation,
+        public Message postProcessMessage(final Message message, final @Nullable Correlation correlation,
                 final String exchange, final String routingKey) {
             final PuretxEngine engine = engineSupplier.get();
             if (engine.isWatching(ViolationType.MESSAGE_PUBLISH) && !isSynchronisedWithTransaction()) {
@@ -116,7 +117,7 @@ public final class PuretxRabbitTemplatePostProcessor implements BeanPostProcesso
         }
 
         @Override
-        public boolean equals(final Object other) {
+        public boolean equals(final @Nullable Object other) {
             return other instanceof PuretxPublishPostProcessor that && that.template == template;
         }
 
