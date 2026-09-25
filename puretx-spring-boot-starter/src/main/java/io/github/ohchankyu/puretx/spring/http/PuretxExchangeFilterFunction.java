@@ -3,6 +3,7 @@ package io.github.ohchankyu.puretx.spring.http;
 import io.github.ohchankyu.puretx.Detection;
 import io.github.ohchankyu.puretx.PuretxEngine;
 import io.github.ohchankyu.puretx.ViolationType;
+import io.github.ohchankyu.puretx.spring.InstrumentationReport;
 import java.util.function.Supplier;
 import org.springframework.core.Ordered;
 import org.springframework.util.function.SingletonSupplier;
@@ -10,6 +11,7 @@ import org.springframework.web.reactive.function.client.ClientRequest;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.ExchangeFunction;
+import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 /**
@@ -38,6 +40,30 @@ public final class PuretxExchangeFilterFunction implements ExchangeFilterFunctio
     /** Resolved on first use, for the bean post-processor that is built before the engine exists. */
     public PuretxExchangeFilterFunction(final Supplier<PuretxEngine> engineSupplier) {
         this.engineSupplier = SingletonSupplier.of(engineSupplier);
+    }
+
+    /**
+     * Adds this filter to what {@code builder} will build, first in the chain, unless one is
+     * already there.
+     *
+     * @return whether it was added
+     */
+    public boolean installOn(final WebClient.Builder builder) {
+        final boolean[] added = {false};
+        builder.filters(filters -> {
+            if (filters.stream().noneMatch(PuretxExchangeFilterFunction.class::isInstance)) {
+                filters.add(0, this);
+                added[0] = true;
+            }
+        });
+        return added[0];
+    }
+
+    /** {@link #installOn(WebClient.Builder)}, counted as a builder-made client in the startup report. */
+    public void installOn(final WebClient.Builder builder, final InstrumentationReport report) {
+        if (installOn(builder)) {
+            report.instrumented("WebClient.Builder");
+        }
     }
 
     @Override

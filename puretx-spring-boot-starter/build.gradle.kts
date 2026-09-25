@@ -1,6 +1,8 @@
 description = "puretx Spring Boot starter — detects impure @Transactional work"
 
+val springBootVersion = project.property("springBootVersion") as String
 val springBootBaselineVersion = project.property("springBootBaselineVersion") as String
+val springBoot4BaselineVersion = project.property("springBoot4BaselineVersion") as String
 val feignVersion = "13.14"
 
 // Pinned rather than taken from a BOM: Lombok's version has nothing to do with which
@@ -9,11 +11,14 @@ val lombokVersion = "1.18.46"
 
 /**
  * Compiled against the oldest supported Spring Boot so that using anything newer by accident
- * fails here rather than at a user's startup. Tests run against the current release.
+ * fails here rather than at a user's startup. Tests run against whatever `springBootVersion`
+ * says, which is how CI covers the whole supported range.
  */
 val baselineBom = dependencies.platform(
     "org.springframework.boot:spring-boot-dependencies:$springBootBaselineVersion",
 )
+
+val testsRunOnSpringBoot4 = springBootVersion.substringBefore('.').toInt() >= 4
 
 dependencies {
     compileOnly(baselineBom)
@@ -22,6 +27,12 @@ dependencies {
     api("org.springframework.boot:spring-boot-autoconfigure:$springBootBaselineVersion")
     api("org.springframework:spring-tx:6.1.0")
     api("org.springframework:spring-context:6.1.0")
+
+    // Spring Boot 4 moved the HTTP client customizer interfaces into modules of their own. Only
+    // those two jars are needed to compile the Boot 4 variants, and pulling them in without
+    // their dependencies keeps the rest of the compile classpath on the 3.2 baseline.
+    compileOnly("org.springframework.boot:spring-boot-restclient:$springBoot4BaselineVersion") { isTransitive = false }
+    compileOnly("org.springframework.boot:spring-boot-webclient:$springBoot4BaselineVersion") { isTransitive = false }
 
     // Lombok must come first on the processor path so that the configuration processor sees the
     // getters and setters it generates. Both are compile-time only and neither reaches consumers.
@@ -46,4 +57,11 @@ dependencies {
     testImplementation("io.github.openfeign:feign-core:$feignVersion")
     testImplementation("io.projectreactor:reactor-test")
     testRuntimeOnly("com.h2database:h2")
+
+    // On Boot 3 the builder beans come with spring-boot-autoconfigure. On Boot 4 they live in
+    // starters of their own, without which the customizer path has nothing to attach to.
+    if (testsRunOnSpringBoot4) {
+        testImplementation("org.springframework.boot:spring-boot-starter-restclient")
+        testImplementation("org.springframework.boot:spring-boot-starter-webclient")
+    }
 }

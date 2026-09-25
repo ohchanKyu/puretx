@@ -1,6 +1,13 @@
 spring:
   main:
     banner-mode: off
+  autoconfigure:
+    # Kafka is on the test classpath so the detector can be exercised; no broker is. Both names,
+    # because the auto-configuration moved packages in Spring Boot 4 and a name that is not on
+    # the classpath is ignored.
+    exclude:
+      - org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
+      - org.springframework.boot.kafka.autoconfigure.KafkaAutoConfiguration
   datasource:
     url: jdbc:h2:mem:puretx;DB_CLOSE_DELAY=-1
     driver-class-name: org.h2.Driver
