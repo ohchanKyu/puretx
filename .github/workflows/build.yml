@@ -47,7 +47,7 @@ jobs:
 
       - name: Upload reports
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: reports-java-${{ matrix.java }}-boot-${{ matrix.spring-boot }}
           path: |
