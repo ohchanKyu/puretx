@@ -3,8 +3,9 @@ name: build
 on:
   push:
     branches: [main]
+  # Every pull request, whatever it targets: a stack of branches merged in order should each be
+  # checked, not only the one at the bottom.
   pull_request:
-    branches: [main]
 
 permissions:
   contents: read
