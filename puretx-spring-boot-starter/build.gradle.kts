@@ -7,7 +7,7 @@ val feignVersion = "13.14"
 
 // Pinned rather than taken from a BOM: Lombok's version has nothing to do with which
 // Spring Boot this module compiles against.
-val lombokVersion = "1.18.46"
+val lombokVersion = "1.18.48"
 
 /**
  * Compiled against the oldest supported Spring Boot so that using anything newer by accident
