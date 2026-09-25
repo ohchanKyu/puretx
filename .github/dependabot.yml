@@ -1,0 +1,18 @@
+version: 2
+updates:
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: weekly
+    # The compile baselines are pinned on purpose: 3.2.0 is the oldest Boot puretx supports and
+    # 4.0.0 the first Boot 4, and raising either would silently narrow what the library runs on.
+    ignore:
+      - dependency-name: "org.springframework.boot:spring-boot-dependencies"
+      - dependency-name: "org.springframework.boot:spring-boot-autoconfigure"
+      - dependency-name: "org.springframework.boot:spring-boot-restclient"
+      - dependency-name: "org.springframework.boot:spring-boot-webclient"
+      - dependency-name: "org.springframework:*"
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

@@ -315,6 +315,12 @@ Reactive transaction managers are not covered; puretx's detection is thread-boun
 | `puretx-spring-boot-starter` | Auto-configuration and the Spring detectors — the one you depend on |
 | `puretx-sample` | A runnable example. `./gradlew :puretx-sample:run`, then `curl -X POST localhost:8080/orders/impure` |
 
+## Contributing
+
+Bug reports, false positives above all, and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md)
+has the build, the conventions and what a good change looks like; [SECURITY.md](SECURITY.md) says
+how to report a vulnerability privately.
+
 ## License
 
 Apache License 2.0.

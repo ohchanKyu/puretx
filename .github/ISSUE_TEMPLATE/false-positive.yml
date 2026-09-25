@@ -1,0 +1,42 @@
+name: False positive
+description: puretx reported a transaction that is fine
+title: "false positive: "
+labels: ["false positive"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is the most useful report puretx can get. A warning that fires on correct code is
+        worse than no warning, so these are fixed first.
+  - type: textarea
+    id: report
+    attributes:
+      label: What puretx printed
+      description: The whole block, from `[puretx] IMPURE TRANSACTION detected` down to the last `path` line.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: code
+    attributes:
+      label: The shape of the code
+      description: |
+        The transactional method and the call it flagged, trimmed to what matters. If the work
+        is deferred somehow (an event listener, a synchronization, an executor), show how.
+      render: java
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why this should not have been reported
+      description: One or two sentences. "The call happens after the commit" is a complete answer.
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      placeholder: puretx 0.1.0-rc1, Spring Boot 3.5.16, Java 21
+    validations:
+      required: true
