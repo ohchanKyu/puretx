@@ -7,42 +7,19 @@ change the API.
 
 ## [Unreleased]
 
-### Added
-
-- RabbitMQ detection: a publish through any `RabbitTemplate` bean inside a transaction is
-  reported, unless the template's transacted channel is synchronised with that transaction.
-- Spring Boot 4 support. The HTTP client customizers moved packages in Boot 4; puretx now
-  declares each one for both Boot 3 and Boot 4 and uses whichever is on the classpath.
-- A `RestClientCustomizer`, so a `RestClient` built from the injected `RestClient.Builder` inside
-  a constructor is instrumented. That is the pattern the Spring Boot reference guide recommends,
-  and it never produces a bean for the post-processor to see.
-- Continuous integration runs the test suite against Spring Boot 3.2, 3.5, 4.0 and 4.1 on
-  Java 17 and 21.
-- Javadoc jars, POM metadata and optional artifact signing, everything a Maven Central release
-  needs.
-- JSpecify nullness annotations. Every package is `@NullMarked`; the handful of things that can
-  be `null` — a `TransactionProbe` result, `PuretxEngine.start`, `Violation.origin`,
-  `TransactionInfo.source` — say so. `org.jspecify:jspecify` is an API dependency of
-  `puretx-core`, the same choice Spring Framework 7 made.
-- `Automatic-Module-Name` in both jars: `io.github.ohchankyu.puretx` and
-  `io.github.ohchankyu.puretx.spring`.
-
-### Changed
-
-- `spring-boot-autoconfigure` is a runtime dependency of the starter in the published POM rather
-  than a compile-scope one.
-- The `RestClient` and `WebClient` post-processors leave a client that already carries the
-  interceptor untouched, instead of rebuilding it and counting it a second time in the startup
-  report.
-
-## [0.1.0-rc1]
+## [0.1.0-rc1] - 2026-09-25
 
 First tagged version, served from JitPack.
 
 ### Added
 
-- Detection of HTTP calls (`RestTemplate`, `RestClient`, `WebClient`, Feign) and Kafka publishing
-  inside a Spring transaction, and of transactions held open past a threshold.
+- Detection of HTTP calls (`RestTemplate`, `RestClient`, `WebClient`, Feign) inside a Spring
+  transaction. Clients are reached however they were built: as beans through a post-processor,
+  or from an injected builder through Boot's customizers.
+- Detection of message publishing inside a transaction, through any Kafka `ProducerFactory` and
+  any `RabbitTemplate`. A Kafka transactional producer and a transacted Rabbit channel
+  synchronised with the transaction are left alone.
+- Detection of transactions held open past `puretx.max-duration`.
 - `WARN` and `FAIL` modes, ignore patterns, application package hints and a bounded violation
   store for assertions.
 - A one-line transaction summary saying how much of a transaction's life went to external calls.
@@ -50,6 +27,11 @@ First tagged version, served from JitPack.
 - `Puretx.watch` for calls puretx cannot instrument itself, and `Puretx.suppress` for calls that
   have been looked at and kept.
 - A startup report of what was actually instrumented.
+- Spring Boot 3.2 through 4.x on Java 17+. CI runs the suite against Boot 3.2, 3.5, 4.0 and 4.1
+  on Java 17 and 21.
+- JSpecify nullness annotations; `org.jspecify:jspecify` is an API dependency of `puretx-core`.
+- `Automatic-Module-Name` in both jars: `io.github.ohchankyu.puretx` and
+  `io.github.ohchankyu.puretx.spring`.
 
 [Unreleased]: https://github.com/ohchanKyu/puretx/compare/v0.1.0-rc1...HEAD
 [0.1.0-rc1]: https://github.com/ohchanKyu/puretx/releases/tag/v0.1.0-rc1
