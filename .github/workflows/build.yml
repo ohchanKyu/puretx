@@ -29,7 +29,7 @@ jobs:
         spring-boot: ['3.2.12', '3.5.16', '4.0.8', '4.1.1']
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@v4
