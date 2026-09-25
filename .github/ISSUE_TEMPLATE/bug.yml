@@ -1,0 +1,33 @@
+name: Bug
+description: Something is broken, or something that should be reported was not
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what puretx did, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: startup
+    attributes:
+      label: The two startup lines
+      description: |
+        The `[puretx] watching transactions` line and the `[puretx] instrumented` line. If the
+        second one is a warning, or missing, that is usually the whole story.
+      render: text
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: A minimal transactional method and the client that makes the call, or a link to a repository.
+      render: java
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      placeholder: puretx 0.1.0-rc1, Spring Boot 3.5.16, Java 21
+    validations:
+      required: true

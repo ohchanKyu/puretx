@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Question
+    url: https://github.com/ohchanKyu/puretx/discussions
+    about: Ask how something works, or whether a call should count. Discussions keep issues for defects.
