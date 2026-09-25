@@ -3,7 +3,7 @@ description = "puretx Spring Boot starter — detects impure @Transactional work
 val springBootVersion = project.property("springBootVersion") as String
 val springBootBaselineVersion = project.property("springBootBaselineVersion") as String
 val springBoot4BaselineVersion = project.property("springBoot4BaselineVersion") as String
-val feignVersion = "13.14"
+val feignVersion = "13.15"
 
 // Pinned rather than taken from a BOM: Lombok's version has nothing to do with which
 // Spring Boot this module compiles against.
