@@ -118,6 +118,24 @@ class KafkaDetectionTests {
     }
 
     @Test
+    @DisplayName("a holder for another factory's producer does not exempt this one's local transaction")
+    void holderMustWrapThisProducer() {
+        PuretxEngine engine = engine(PuretxMode.WARN, transactionActive());
+        Producer<String, String> managed = PuretxProducerProxy.wrap(fakeProducer(), engine);
+        Producer<String, String> local = PuretxProducerProxy.wrap(fakeProducer(), engine);
+        managed.beginTransaction();
+        TransactionSynchronizationManager.bindResource(producerFactoryKey, springBinding(managed));
+
+        local.beginTransaction();
+        local.send(new ProducerRecord<>("audit", "key", "local transaction on factory B"));
+        local.commitTransaction();
+        managed.send(new ProducerRecord<>("orders", "key", "managed transaction on factory A"));
+
+        assertThat(engine.store().all()).singleElement().satisfies(violation ->
+                assertThat(violation.summary()).isEqualTo("Kafka send -> topic 'audit'"));
+    }
+
+    @Test
     @DisplayName("the exemption ends with the Kafka transaction, whichever factory Spring bound")
     void exemptionEndsWithTheKafkaTransaction() {
         PuretxEngine engine = engine(PuretxMode.WARN, transactionActive());

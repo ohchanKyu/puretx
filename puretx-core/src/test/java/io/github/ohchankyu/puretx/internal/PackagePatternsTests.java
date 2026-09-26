@@ -59,6 +59,17 @@ class PackagePatternsTests {
     }
 
     @Test
+    @DisplayName("a class pattern covers its nested and anonymous classes: they are still that class")
+    void plainPatternCoversNestedAndAnonymousClasses() {
+        final PackagePatterns patterns = PackagePatterns.of(List.of("com.acme.legacy.LegacyClient"));
+
+        assertThat(patterns.matches("com.acme.legacy.LegacyClient$1")).isTrue();
+        assertThat(patterns.matches("com.acme.legacy.LegacyClient$Retry")).isTrue();
+        assertThat(patterns.matches("com.acme.legacy.LegacyClient$Retry$1")).isTrue();
+        assertThat(patterns.matches("com.acme.legacy.LegacyClientFactory")).isFalse();
+    }
+
+    @Test
     @DisplayName("a dot is a dot, not a regex wildcard")
     void dotsAreLiteral() {
         assertThat(PackagePatterns.of(List.of("com.acme.Order")).matches("comXacmeXOrder")).isFalse();

@@ -2,7 +2,9 @@ package io.github.ohchankyu.puretx.spring;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.ohchankyu.puretx.Puretx;
 import io.github.ohchankyu.puretx.PuretxEngine;
+import io.github.ohchankyu.puretx.PuretxMode;
 import io.github.ohchankyu.puretx.PuretxSettings;
 import io.github.ohchankyu.puretx.TransactionSummary;
 import io.github.ohchankyu.puretx.Violation;
@@ -10,6 +12,7 @@ import io.github.ohchankyu.puretx.ViolationListener;
 import io.github.ohchankyu.puretx.ViolationType;
 import io.github.ohchankyu.puretx.spring.tx.PuretxTransactionManagerPostProcessor;
 import io.github.ohchankyu.puretx.spring.tx.SpringTransactionProbe;
+import io.github.ohchankyu.puretx.spring.tx.TransactionScopeManager;
 import java.lang.reflect.Proxy;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -89,6 +92,27 @@ class KafkaTransactionManagerTests {
     }
 
     @Test
+    @DisplayName("Puretx.watch inside a transaction uses the engine that opened it, not the last one installed")
+    void watchUsesTheEngineThatOwnsTheTransaction() {
+        final PuretxEngine owner = engine(Duration.ofSeconds(3));
+        final PuretxEngine lastInstalled = new PuretxEngine(
+                PuretxSettings.builder().mode(PuretxMode.FAIL).build(), new SpringTransactionProbe());
+        final TransactionTemplate kafka = new TransactionTemplate(instrumented(owner));
+        Puretx.setEngine(lastInstalled);
+        Puretx.setScopedEngine(TransactionScopeManager::currentEngine);
+        try {
+            kafka.executeWithoutResult(status -> Puretx.watch("Slack chat.postMessage", () -> "sent"));
+        } finally {
+            Puretx.setScopedEngine(null);
+            Puretx.setEngine(null);
+        }
+
+        assertThat(owner.store().all()).singleElement().satisfies(violation ->
+                assertThat(violation.summary()).isEqualTo("Slack chat.postMessage"));
+        assertThat(lastInstalled.store().all()).isEmpty();
+    }
+
+    @Test
     @DisplayName("once the Kafka transaction is over, the thread is clean")
     void leavesNothingBehind() {
         final PuretxEngine engine = engine(Duration.ofSeconds(3));
@@ -103,7 +127,7 @@ class KafkaTransactionManagerTests {
     private PuretxEngine engine(final Duration maxDuration) {
         final PuretxEngine engine = new PuretxEngine(
                 PuretxSettings.builder().maxDuration(maxDuration).build(), new SpringTransactionProbe());
-        engine.addListener(io.github.ohchankyu.puretx.spring.tx.TransactionScopeManager.callRecorder(() -> engine));
+        engine.addListener(TransactionScopeManager.callRecorder(() -> engine));
         engine.addListener(new ViolationListener() {
             @Override
             public void onViolation(final Violation violation) {

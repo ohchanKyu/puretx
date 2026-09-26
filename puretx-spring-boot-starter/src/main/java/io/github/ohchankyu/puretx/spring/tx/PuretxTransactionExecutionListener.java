@@ -37,7 +37,8 @@ import org.springframework.util.function.SingletonSupplier;
  * one — {@code REQUIRES_NEW} — throwing there would reach the outer method and roll the outer
  * transaction back while the inner stays committed, a half-written state that no test wants.
  * So an inner failure is handed to the enclosing scope and thrown once the outermost transaction
- * has committed too.
+ * has committed too — unless the enclosing transaction is the one Spring's test framework opened
+ * around the test, which always rolls back and would swallow it; then it is thrown at once.
  *
  * <p>One instance exists per transaction manager, so a violation can say which one was in charge.
  */
@@ -74,6 +75,7 @@ public final class PuretxTransactionExecutionListener implements TransactionExec
         }
         TransactionScope scope = new TransactionScope(
                 transaction,
+                engine,
                 transaction.getTransactionName(),
                 transaction.isReadOnly(),
                 TestTransactionDetector.isTestManaged(),
@@ -128,7 +130,7 @@ public final class PuretxTransactionExecutionListener implements TransactionExec
             final Violation failure = own != null ? own : scope.deferredFailure();
             if (failure != null && !quiet && engine.settings().mode() == PuretxMode.FAIL) {
                 final TransactionScope outer = TransactionScopeManager.current();
-                if (outer != null) {
+                if (outer != null && !outer.isTestManaged()) {
                     outer.deferFailure(failure);
                 } else {
                     throw new ImpureTransactionException(failure);

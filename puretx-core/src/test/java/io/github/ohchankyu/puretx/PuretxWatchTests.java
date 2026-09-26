@@ -33,6 +33,23 @@ class PuretxWatchTests {
     }
 
     @Test
+    @DisplayName("inside a transaction another engine opened, watch judges and records by that engine")
+    void prefersTheEngineThatOwnsTheTransaction() {
+        final PuretxEngine lastInstalled = install(PuretxMode.FAIL, () -> ACTIVE);
+        final PuretxEngine owner = new PuretxEngine(PuretxSettings.builder().mode(PuretxMode.WARN).build(), () -> ACTIVE);
+        Puretx.setScopedEngine(() -> owner);
+        try {
+            assertThat(Puretx.watch("Slack chat.postMessage", () -> "sent")).isEqualTo("sent");
+        } finally {
+            Puretx.setScopedEngine(null);
+        }
+
+        assertThat(owner.store().all()).hasSize(1);
+        assertThat(lastInstalled.store().all()).isEmpty();
+        assertThat(Puretx.engine()).isSameAs(lastInstalled);
+    }
+
+    @Test
     @DisplayName("with no transaction open the call runs untouched and nothing is reported")
     void staysOutOfTheWayWithoutATransaction() {
         final PuretxEngine engine = install(PuretxMode.WARN, TransactionProbe.NONE);
