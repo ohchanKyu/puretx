@@ -101,6 +101,35 @@ class KafkaDetectionTests {
     }
 
     @Test
+    @DisplayName("a send between beginTransaction and commit is the producer's own transaction, whichever factory bound it")
+    void ignoresSendWhileTheProducerItselfIsInATransaction() {
+        PuretxEngine engine = engine(PuretxMode.WARN, transactionActive());
+        Producer<String, String> producer = PuretxProducerProxy.wrap(fakeProducer(), engine, producerFactoryKey);
+
+        producer.beginTransaction();
+        producer.send(new ProducerRecord<>("orders", "key", "in transaction"));
+        producer.commitTransaction();
+        producer.send(new ProducerRecord<>("orders", "key", "after commit"));
+
+        assertThat(sent).hasSize(2);
+        assertThat(engine.store().all()).singleElement().satisfies(violation ->
+                assertThat(violation.summary()).isEqualTo("Kafka send -> topic 'orders'"));
+    }
+
+    @Test
+    @DisplayName("an aborted transaction ends the producer's transaction too")
+    void abortEndsTheProducersTransaction() {
+        PuretxEngine engine = engine(PuretxMode.WARN, transactionActive());
+        Producer<String, String> producer = PuretxProducerProxy.wrap(fakeProducer(), engine, producerFactoryKey);
+
+        producer.beginTransaction();
+        producer.abortTransaction();
+        producer.send(new ProducerRecord<>("orders", "key", "after abort"));
+
+        assertThat(engine.store().all()).hasSize(1);
+    }
+
+    @Test
     @DisplayName("FAIL mode throws before the record leaves — Kafka's own interceptors could not")
     void throwsBeforeSendingInFailMode() {
         PuretxEngine engine = engine(PuretxMode.FAIL, transactionActive());

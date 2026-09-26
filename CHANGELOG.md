@@ -22,6 +22,10 @@ change the API.
   report or an error tracker, it pinned the connection and persistence context behind it.
 - A call refused in `FAIL` mode is no longer counted in the transaction summary as an external
   call that took 0ms.
+- A `KafkaTemplate` built with configuration overrides no longer reports its transactional
+  publishes. Spring Kafka copies the producer factory for such a template and binds the copy to
+  the transaction, while puretx looked for the original; the producer's own transaction state is
+  what is checked now, whichever factory made it.
 
 ## [0.1.0-rc2] - 2026-09-26
 
