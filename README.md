@@ -250,7 +250,7 @@ Puretx.suppress(() -> auditClient.record(event));
 | `puretx.enabled` | `true` | Master switch. `false` wires nothing at all |
 | `puretx.mode` | `WARN` | `OFF`, `WARN`, `FAIL` |
 | `puretx.max-duration` | `3s` | Transactions held longer are reported. `0` disables |
-| `puretx.ignore` | — | Class or package patterns to stay quiet about. `com.acme.legacy` covers everything below it; `com.acme.**.Generated` also works |
+| `puretx.ignore` | — | Class or package patterns to stay quiet about. `com.acme.legacy` covers everything below it, and a class covers its nested and anonymous classes; `com.acme.**.Generated` also works |
 | `puretx.app-packages` | — | Your packages, so the reported call site is always your code |
 | `puretx.include-call-path` | `true` | Log the chain of application frames |
 | `puretx.call-path-depth` | `8` | Frames to keep |
@@ -267,9 +267,11 @@ Violations are also available programmatically, which is useful for assertions:
 assertThat(Puretx.violations()).isEmpty();
 ```
 
-`Puretx.violations()` reads one engine, and each Spring context that starts replaces it. If your
-suite runs test classes in parallel across several contexts, inject the engine instead — it is
-always the one belonging to the context under test:
+`Puretx.violations()` reads the last engine a Spring context installed, and a suite with cached
+contexts keeps several alive at once. Inside a transaction, `Puretx.watch` and `Puretx.suppress`
+already use the engine of the context that opened it, so application code is safe; an assertion
+made after the transaction is not, because only the static engine is left. Inject the engine
+instead — it is always the one belonging to the context under test:
 
 ```java
 @Autowired PuretxEngine engine;

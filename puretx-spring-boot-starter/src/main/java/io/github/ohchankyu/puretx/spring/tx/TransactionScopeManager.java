@@ -41,6 +41,18 @@ public final class TransactionScopeManager {
         return stack == null ? null : stack.peek();
     }
 
+    /**
+     * The engine that opened the innermost transaction on this thread, or {@code null}.
+     *
+     * <p>What {@code Puretx.watch} and {@code Puretx.violations()} resolve through, so that inside
+     * a transaction they use the engine of the context that owns it rather than whichever
+     * context started last.
+     */
+    public static @Nullable PuretxEngine currentEngine() {
+        final TransactionScope scope = current();
+        return scope == null || scope.isFinished() ? null : scope.engine();
+    }
+
     static void pop(final TransactionScope scope) {
         Deque<TransactionScope> stack = SCOPES.get();
         if (stack == null) {

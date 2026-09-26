@@ -25,13 +25,15 @@ public final class PackagePatterns {
     private static final String ANY_CHARACTER = ".";
 
     /**
-     * Appended to a wildcard-free pattern so it also covers everything below it.
+     * Appended to a wildcard-free pattern so it also covers everything below it: sub-packages,
+     * and the nested and anonymous classes of a named class, which live under {@code $}. An
+     * ignored client's anonymous {@code Runnable} is still that client.
      *
      * <p>Deliberately not appended to a pattern that has wildcards: those say what shape they
      * want, and blanketing them would make a trailing {@code *} cross package separators, which
      * is exactly what {@code **} is for.
      */
-    private static final String SUBPACKAGE_SUFFIX = "(\\..*)?";
+    private static final String SUBPACKAGE_SUFFIX = "([.$].*)?";
 
     private static final int REGEX_GROWTH_HEADROOM = 16;
 

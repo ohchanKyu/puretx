@@ -7,6 +7,19 @@ change the API.
 
 ## [Unreleased]
 
+### Fixed
+
+- `Puretx.watch` inside a transaction uses the engine of the context that opened it, not the
+  last context to start. In a suite with cached contexts, a `WARN` context's application code
+  could throw because a `FAIL` context had started later, and record into the wrong store.
+- In `FAIL` mode, a slow `REQUIRES_NEW` transaction inside a Spring test-managed transaction
+  fails the test. The failure was deferred to the test transaction, which always rolls back and
+  swallowed it.
+- With two producer factories, a local Kafka transaction on one is reported while the other is
+  in a Spring-managed transaction. The exemption now requires the bound `KafkaResourceHolder`
+  to wrap this very producer.
+- An ignore pattern naming a class also covers its nested and anonymous classes.
+
 ## [0.1.0-rc5] - 2026-09-26
 
 ### Fixed

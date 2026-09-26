@@ -85,6 +85,7 @@ public class PuretxAutoConfiguration {
         engine.addListener(TransactionScopeManager.callRecorder(() -> engine));
         listeners.orderedStream().forEach(engine::addListener);
         Puretx.setEngine(engine);
+        Puretx.setScopedEngine(TransactionScopeManager::currentEngine);
 
         log.info("[puretx] {}", engine.settings().describe());
         return engine;

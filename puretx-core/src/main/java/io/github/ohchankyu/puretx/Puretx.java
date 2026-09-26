@@ -28,15 +28,36 @@ public final class Puretx {
 
     private static volatile PuretxEngine engine = PuretxEngine.disabled();
 
+    private static volatile Supplier<@Nullable PuretxEngine> scopedEngine = () -> null;
+
     private Puretx() {}
 
+    /**
+     * The engine for the current thread: the one that opened the transaction this thread is in,
+     * if a framework has said so, otherwise the last one installed.
+     *
+     * <p>The distinction matters wherever more than one engine is alive at once, which a Spring
+     * test suite with cached contexts is. The last context to start owns the static engine, but
+     * a transaction opened by an earlier context's transaction manager belongs to that context,
+     * and a {@link #watch} inside it must judge by that context's mode and record into that
+     * context's store — not throw because some other context happens to run in {@code FAIL}.
+     */
     public static PuretxEngine engine() {
-        return engine;
+        final PuretxEngine scoped = scopedEngine.get();
+        return scoped != null ? scoped : engine;
     }
 
     /** Installed by the Spring Boot starter at startup. */
     public static void setEngine(final @Nullable PuretxEngine engine) {
         Puretx.engine = engine == null ? PuretxEngine.disabled() : engine;
+    }
+
+    /**
+     * Installed by a framework integration that knows which engine opened the current
+     * transaction. Returns {@code null} when the thread is in no transaction it knows about.
+     */
+    public static void setScopedEngine(final @Nullable Supplier<@Nullable PuretxEngine> resolver) {
+        Puretx.scopedEngine = resolver == null ? () -> null : resolver;
     }
 
     /**
@@ -94,14 +115,15 @@ public final class Puretx {
 
     /** {@link #watch(String, Supplier)} for something other than an HTTP call — a publish, say. */
     public static <T extends @Nullable Object> T watch(final ViolationType type, final String description, final Supplier<T> call) {
-        final Detection detection = engine.start(type, () -> description);
+        final PuretxEngine current = engine();
+        final Detection detection = current.start(type, () -> description);
         if (detection == null) {
             return call.get();
         }
         try {
             return call.get();
         } finally {
-            engine.finish(detection);
+            current.finish(detection);
         }
     }
 
@@ -121,25 +143,26 @@ public final class Puretx {
     /**
      * The most recent violations, oldest first. Bounded by {@code puretx.record-limit}.
      *
-     * <p><strong>One engine, globally.</strong> Each Spring context that starts installs its own,
-     * and the last one to start wins. Interceptors keep hold of the engine from the context that
-     * built them, so with several contexts alive at once — a test suite running classes in
-     * parallel, most commonly — a violation can be recorded in one store while this method reads
-     * another, and the assertion quietly sees nothing.
+     * <p><strong>One static engine.</strong> Each Spring context that starts installs its own,
+     * and the last one to start wins. Inside a transaction this reads the engine that opened it,
+     * but a test asserts after the transaction, where only the static one is left, and with
+     * several contexts alive at once — a suite with cached contexts, most commonly — a violation
+     * can be recorded in one store while this method reads another, and the assertion quietly
+     * sees nothing.
      *
      * <p>In a test, inject the {@code PuretxEngine} bean and read {@code engine.store()} instead.
      * That is always the engine belonging to the context under test.
      */
     public static List<Violation> violations() {
-        return engine.store().all();
+        return engine().store().all();
     }
 
     /** Total violations since the last {@link #clearViolations()}, including ones dropped by the limit. */
     public static long violationCount() {
-        return engine.store().total();
+        return engine().store().total();
     }
 
     public static void clearViolations() {
-        engine.store().clear();
+        engine().store().clear();
     }
 }

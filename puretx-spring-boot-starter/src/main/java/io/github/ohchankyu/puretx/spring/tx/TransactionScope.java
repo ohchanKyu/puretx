@@ -1,5 +1,6 @@
 package io.github.ohchankyu.puretx.spring.tx;
 
+import io.github.ohchankyu.puretx.PuretxEngine;
 import io.github.ohchankyu.puretx.TransactionInfo;
 import io.github.ohchankyu.puretx.TransactionSummary;
 import io.github.ohchankyu.puretx.Violation;
@@ -19,6 +20,9 @@ import org.springframework.transaction.TransactionExecution;
 public final class TransactionScope {
 
     private final TransactionExecution execution;
+
+    /** The engine of the context whose transaction manager opened this transaction. */
+    private final PuretxEngine engine;
 
     private final String name;
 
@@ -78,6 +82,7 @@ public final class TransactionScope {
 
     TransactionScope(
         final TransactionExecution execution,
+        final PuretxEngine engine,
         final String name,
         final boolean readOnly,
         final boolean testManaged,
@@ -85,6 +90,7 @@ public final class TransactionScope {
         final @Nullable Object resourceKey
     ) {
         this.execution = execution;
+        this.engine = engine;
         this.name = name;
         this.readOnly = readOnly;
         this.testManaged = testManaged;
@@ -109,6 +115,14 @@ public final class TransactionScope {
 
     public TransactionExecution execution() {
         return execution;
+    }
+
+    public PuretxEngine engine() {
+        return engine;
+    }
+
+    public boolean isTestManaged() {
+        return testManaged;
     }
 
     public long elapsedMillis() {

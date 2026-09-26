@@ -12,6 +12,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.jspecify.annotations.Nullable;
 import org.springframework.kafka.core.KafkaResourceHolder;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.util.ReflectionUtils;
 
 /**
  * Wraps a Kafka {@code Producer} so that {@code send} can be inspected before the record leaves.
@@ -32,11 +33,17 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  *
  * <p>The holder is looked for by type rather than by factory, because
  * {@code new KafkaTemplate(factory, overrides)} copies the factory and binds the copy, while the
- * post-processor that made this proxy only knew the original. A local transaction started inside
- * a synchronised one on the same thread would pass this check; that shape is rare enough to
- * accept rather than reach into the holder's private delegate to tell the two producers apart.
+ * post-processor that made this proxy only knew the original. And the holder has to be wrapping
+ * <em>this</em> producer: with two factories, one in a Spring-managed Kafka transaction and the
+ * other running a local one, the local one commits on its own and must still be reported. The
+ * holder's producer is the factory's {@code CloseSafeProducer} around this proxy, whose delegate
+ * accessor is package-private; it is read reflectively, and if that is ever impossible the
+ * check falls back to the holder's presence alone.
  */
 final class PuretxProducerProxy implements InvocationHandler {
+
+    private static final String CLOSE_SAFE_PRODUCER =
+            "org.springframework.kafka.core.DefaultKafkaProducerFactory$CloseSafeProducer";
 
     private final Producer<?, ?> target;
 
@@ -63,7 +70,7 @@ final class PuretxProducerProxy implements InvocationHandler {
         switch (method.getName()) {
             case "send" -> {
                 if (args != null && args.length > 0 && args[0] instanceof ProducerRecord<?, ?> record) {
-                    return send(method, args, record);
+                    return send(proxy, method, args, record);
                 }
             }
             case "beginTransaction" -> {
@@ -94,9 +101,9 @@ final class PuretxProducerProxy implements InvocationHandler {
      * one violation a rollback cannot take back. What it does not include is the broker's
      * acknowledgement, which arrives on the producer's own thread after {@code send} returned.
      */
-    private @Nullable Object send(final Method method, final Object[] args, final ProducerRecord<?, ?> record)
-            throws Throwable {
-        final Detection detection = detect(record);
+    private @Nullable Object send(final Object proxy, final Method method, final Object[] args,
+            final ProducerRecord<?, ?> record) throws Throwable {
+        final Detection detection = detect(proxy, record);
         if (detection == null) {
             return invokeTarget(method, args);
         }
@@ -115,16 +122,48 @@ final class PuretxProducerProxy implements InvocationHandler {
         }
     }
 
-    private @Nullable Detection detect(final ProducerRecord<?, ?> record) {
-        if (!engine.isWatching(ViolationType.MESSAGE_PUBLISH) || isSpringManagedKafkaTransaction()) {
+    private @Nullable Detection detect(final Object proxy, final ProducerRecord<?, ?> record) {
+        if (!engine.isWatching(ViolationType.MESSAGE_PUBLISH) || isSpringManagedKafkaTransaction(proxy)) {
             return null;
         }
         return engine.start(ViolationType.MESSAGE_PUBLISH,
                 () -> "Kafka send -> topic '" + record.topic() + "'");
     }
 
-    private boolean isSpringManagedKafkaTransaction() {
+    private boolean isSpringManagedKafkaTransaction(final Object proxy) {
         return inTransaction && TransactionSynchronizationManager.getResourceMap().values().stream()
-                .anyMatch(KafkaResourceHolder.class::isInstance);
+                .anyMatch(resource -> resource instanceof KafkaResourceHolder<?, ?> holder && wraps(holder, proxy));
+    }
+
+    /**
+     * Whether {@code holder} is Spring's binding of this very producer, as far as can be told.
+     *
+     * <p>{@code DefaultKafkaProducerFactory} hands Spring a {@code CloseSafeProducer} around the
+     * post-processed producer. That class is protected and its delegate accessor package-private,
+     * so both are reached by name. A holder around another puretx proxy is plainly not this one.
+     * Any other wrapper is unknown, and an unknown wrapper is taken to be Spring's: a false
+     * positive on the pattern the README recommends is the worse error.
+     */
+    private static boolean wraps(final KafkaResourceHolder<?, ?> holder, final Object proxy) {
+        final Producer<?, ?> held = holder.getProducer();
+        if (held == proxy) {
+            return true;
+        }
+        if (Proxy.isProxyClass(held.getClass()) && Proxy.getInvocationHandler(held) instanceof PuretxProducerProxy) {
+            return false;
+        }
+        if (!CLOSE_SAFE_PRODUCER.equals(held.getClass().getName())) {
+            return true;
+        }
+        final Method delegate = ReflectionUtils.findMethod(held.getClass(), "getDelegate");
+        if (delegate == null) {
+            return true;
+        }
+        try {
+            ReflectionUtils.makeAccessible(delegate);
+            return ReflectionUtils.invokeMethod(delegate, held) == proxy;
+        } catch (RuntimeException inaccessible) {
+            return true;
+        }
     }
 }

@@ -3,6 +3,7 @@ package io.github.ohchankyu.puretx.spring;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.acme.orders.InventoryService;
 import com.acme.orders.OrderService;
 import com.acme.orders.PuretxTestApplication;
 import com.acme.orders.StubHttpServer;
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * What FAIL mode does to the transaction it complains about, pinned down per detector.
@@ -35,6 +37,9 @@ class FailModeRollbackTests {
 
     @Autowired
     private StubHttpServer server;
+
+    @Autowired
+    private InventoryService inventoryService;
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
@@ -81,5 +86,14 @@ class FailModeRollbackTests {
                 .as("both were too long, the inner one first; the outer waited for it")
                 .containsExactly("InventoryService.recordAndLingerInNewTransaction",
                         "OrderService.recordThenLingerInNewTransaction");
+    }
+
+    @Test
+    @DisplayName("inside a test-managed transaction, a slow REQUIRES_NEW still fails the test")
+    @Transactional
+    void slowInnerTransactionInsideATestTransactionStillFails() {
+        assertThatThrownBy(() -> inventoryService.recordAndLingerInNewTransaction(600))
+                .as("the test transaction always rolls back, so deferring to it would swallow the failure")
+                .isInstanceOf(ImpureTransactionException.class);
     }
 }
