@@ -59,6 +59,23 @@ class InterceptorOrderTests {
     }
 
     @Test
+    @DisplayName("the duration covers the wait for the response, even when the request factory reads it lazily")
+    void timesUntilTheResponseArrives() {
+        server.setStatus(200);
+        server.setDelayMillis(300);
+        try {
+            orderService.createOrderByPost(server.url());
+        } finally {
+            server.setDelayMillis(0);
+        }
+
+        assertThat(engine.store().all()).singleElement().satisfies(violation ->
+                assertThat(violation.durationMillis())
+                        .as("HttpURLConnection does not read the status until asked, and that wait is the call")
+                        .isGreaterThanOrEqualTo(300));
+    }
+
+    @Test
     @DisplayName("the call site is the application's, not the retry interceptor that wrapped it")
     void reportsTheApplicationCallSiteRatherThanTheInterceptor() {
         orderService.createOrderWithRetryingClient(server.url());

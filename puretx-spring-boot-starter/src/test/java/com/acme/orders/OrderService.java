@@ -41,6 +41,13 @@ public class OrderService {
         paymentClient.charge(url);
     }
 
+    /** The same call as a POST with a body. */
+    @Transactional
+    public void createOrderByPost(final String url) {
+        save();
+        paymentClient.chargeByPost(url);
+    }
+
     /** RestClient inside the transaction. Same problem, newer API. */
     @Transactional
     public void createOrderWithRestClient(final String url) {

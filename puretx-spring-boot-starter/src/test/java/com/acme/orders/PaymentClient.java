@@ -21,4 +21,9 @@ public class PaymentClient {
     public String charge(final String url) {
         return restTemplate.getForObject(url, String.class);
     }
+
+    /** A POST with a body, the shape on which HttpURLConnection defers reading the response the longest. */
+    public String chargeByPost(final String url) {
+        return restTemplate.postForObject(url, "{\"amount\": 1}", String.class);
+    }
 }
