@@ -7,6 +7,8 @@ change the API.
 
 ## [Unreleased]
 
+## [0.1.0-rc6] - 2026-09-26
+
 ### Fixed
 
 - `Puretx.watch` inside a transaction uses the engine of the context that opened it, not the
@@ -114,7 +116,8 @@ First tagged version, served from JitPack.
 - `Automatic-Module-Name` in both jars: `io.github.ohchankyu.puretx` and
   `io.github.ohchankyu.puretx.spring`.
 
-[Unreleased]: https://github.com/ohchanKyu/puretx/compare/v0.1.0-rc5...HEAD
+[Unreleased]: https://github.com/ohchanKyu/puretx/compare/v0.1.0-rc6...HEAD
+[0.1.0-rc6]: https://github.com/ohchanKyu/puretx/compare/v0.1.0-rc5...v0.1.0-rc6
 [0.1.0-rc5]: https://github.com/ohchanKyu/puretx/compare/v0.1.0-rc4...v0.1.0-rc5
 [0.1.0-rc4]: https://github.com/ohchanKyu/puretx/compare/v0.1.0-rc3...v0.1.0-rc4
 [0.1.0-rc3]: https://github.com/ohchanKyu/puretx/compare/v0.1.0-rc2...v0.1.0-rc3
