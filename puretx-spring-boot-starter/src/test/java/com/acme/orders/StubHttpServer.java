@@ -13,6 +13,9 @@ public final class StubHttpServer implements AutoCloseable {
     private final HttpServer server;
     private volatile long delayMillis;
 
+    /** Headers and a first chunk go out at once; the rest of the body follows this much later. */
+    private volatile long bodyDelayMillis;
+
     /** Status returned to every request. Set to 503 to make a retrying client actually retry. */
     private volatile int status = 200;
 
@@ -30,6 +33,21 @@ public final class StubHttpServer implements AutoCloseable {
                 } catch (InterruptedException ex) {
                     Thread.currentThread().interrupt();
                 }
+            }
+            final long bodyDelay = bodyDelayMillis;
+            if (bodyDelay > 0) {
+                exchange.sendResponseHeaders(status, 0);
+                try (OutputStream out = exchange.getResponseBody()) {
+                    out.write("ok".getBytes(StandardCharsets.UTF_8));
+                    out.flush();
+                    try {
+                        Thread.sleep(bodyDelay);
+                    } catch (InterruptedException ex) {
+                        Thread.currentThread().interrupt();
+                    }
+                    out.write("!".getBytes(StandardCharsets.UTF_8));
+                }
+                return;
             }
             final byte[] body = "ok".getBytes(StandardCharsets.UTF_8);
             exchange.sendResponseHeaders(status, body.length);
@@ -55,6 +73,10 @@ public final class StubHttpServer implements AutoCloseable {
 
     public void setDelayMillis(final long delayMillis) {
         this.delayMillis = delayMillis;
+    }
+
+    public void setBodyDelayMillis(final long bodyDelayMillis) {
+        this.bodyDelayMillis = bodyDelayMillis;
     }
 
     @Override

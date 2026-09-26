@@ -83,29 +83,30 @@ public final class PuretxClientHttpRequestInterceptor implements ClientHttpReque
     }
 
     /**
-     * Times the call up to the arrival of the response status, not merely the return of
-     * {@code execute}.
+     * Times the call until the caller is done with the response.
      *
-     * <p>{@code SimpleClientHttpRequestFactory}, the default behind {@code new RestTemplate()},
-     * returns as soon as the request is written and only waits for the server when the status
-     * is first asked for. Timed at {@code execute}, a call to a server that took 400ms read as
-     * 9ms. Asking for the status here is what the template does next anyway, so nothing is
-     * read twice; the body still streams to the caller afterwards.
+     * <p>Neither the return of {@code execute} nor the arrival of the status is the end of the
+     * call. {@code SimpleClientHttpRequestFactory} returns before the server has answered, and
+     * every non-buffering factory returns before the body has been read; both leave the wait
+     * that actually held the connection out of the figure. The response is handed back wrapped,
+     * and the detection finishes when it is closed or its body read to the end. A request that
+     * fails before there is a response finishes at once.
      */
     @Override
     public ClientHttpResponse intercept(final HttpRequest request, final byte[] body, final ClientHttpRequestExecution execution) throws IOException {
-        final Detection detection =
-                engineSupplier.get().start(ViolationType.HTTP_CALL, () -> summarize(request));
+        final PuretxEngine engine = engineSupplier.get();
+        final Detection detection = engine.start(ViolationType.HTTP_CALL, () -> summarize(request));
         if (detection == null) {
             return execution.execute(request, body);
         }
+        final ClientHttpResponse response;
         try {
-            final ClientHttpResponse response = execution.execute(request, body);
-            response.getStatusCode();
-            return response;
-        } finally {
-            engineSupplier.get().finish(detection);
+            response = execution.execute(request, body);
+        } catch (IOException | RuntimeException ex) {
+            engine.finish(detection);
+            throw ex;
         }
+        return new TimedResponse(response, engine, detection);
     }
 
     /**
@@ -121,6 +122,6 @@ public final class PuretxClientHttpRequestInterceptor implements ClientHttpReque
     }
 
     static String summarize(final HttpRequest request) {
-        return "HTTP " + request.getMethod() + " " + request.getURI();
+        return "HTTP " + request.getMethod() + " " + Uris.describe(request.getURI());
     }
 }

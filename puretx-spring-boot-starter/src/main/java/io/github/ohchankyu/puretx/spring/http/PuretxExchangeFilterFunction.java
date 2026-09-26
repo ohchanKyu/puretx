@@ -4,6 +4,7 @@ import io.github.ohchankyu.puretx.Detection;
 import io.github.ohchankyu.puretx.PuretxEngine;
 import io.github.ohchankyu.puretx.ViolationType;
 import io.github.ohchankyu.puretx.spring.InstrumentationReport;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 import org.springframework.core.Ordered;
 import org.springframework.util.function.SingletonSupplier;
@@ -26,8 +27,11 @@ import reactor.core.publisher.Mono;
  * by then the transaction is genuinely no longer being held.
  *
  * <p>Detection is synchronous — {@code FAIL} still throws on the caller's thread — but the
- * violation is <em>recorded</em> when the exchange terminates, which is whichever thread the
- * client completes on. A blocking caller can therefore return a moment before the report lands.
+ * violation is <em>recorded</em> when the response body terminates, which is whichever thread
+ * the client completes on. Not when the response arrives: the body streams after that, and for
+ * a large response the download is most of the call. A blocking caller can therefore return a
+ * moment before the report lands. A body that is never consumed nor released never finishes the
+ * detection; that caller is leaking the connection, which is the larger problem.
  */
 public final class PuretxExchangeFilterFunction implements ExchangeFilterFunction, Ordered {
 
@@ -71,11 +75,22 @@ public final class PuretxExchangeFilterFunction implements ExchangeFilterFunctio
         final PuretxEngine engine = engineSupplier.get();
         return Mono.defer(() -> {
             final Detection detection = engine.start(
-                    ViolationType.HTTP_CALL, () -> "HTTP " + request.method() + " " + request.url());
+                    ViolationType.HTTP_CALL, () -> "HTTP " + request.method() + " " + Uris.describe(request.url()));
             if (detection == null) {
                 return next.exchange(request);
             }
-            return next.exchange(request).doFinally(signal -> engine.finish(detection));
+            final AtomicBoolean finished = new AtomicBoolean();
+            final Runnable finish = () -> {
+                if (finished.compareAndSet(false, true)) {
+                    engine.finish(detection);
+                }
+            };
+            return next.exchange(request)
+                    .doOnError(error -> finish.run())
+                    .doOnCancel(finish)
+                    .map(response -> response.mutate()
+                            .body(body -> body.doFinally(signal -> finish.run()))
+                            .build());
         });
     }
 
