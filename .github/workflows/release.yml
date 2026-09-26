@@ -1,12 +1,13 @@
 name: release
 
 # A tag is a release. Pushing v1.2.3 builds and tests that commit against every supported
-# Spring Boot line, builds the artifacts under that version, and opens a GitHub release whose
-# notes are that version's section of the changelog. JitPack picks the tag up on its own.
+# Spring Boot line, builds the signed artifacts under that version, opens a GitHub release whose
+# notes are that version's section of the changelog, and publishes to Maven Central.
 #
-# Secrets, optional: SIGNING_KEY and SIGNING_PASSWORD, an ASCII-armoured PGP private key and
-# its passphrase. With them the artifacts are signed, which is what Maven Central will require
-# once publishing there is switched on.
+# Secrets: SIGNING_KEY and SIGNING_PASSWORD, an ASCII-armoured PGP private key and its
+# passphrase; CENTRAL_USERNAME and CENTRAL_PASSWORD, a Central Portal user token. Central
+# publishing is the last step, because a version on Central cannot be re-uploaded: if it fails,
+# fix the cause and re-run the failed job rather than pushing a new tag.
 
 on:
   push:
@@ -66,10 +67,16 @@ jobs:
             exit 1
           fi
 
+      # Skipped when the release already exists, so a re-run after a Central failure does not
+      # trip over its own earlier success.
       - name: GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "release $GITHUB_REF_NAME already exists"
+            exit 0
+          fi
           prerelease=""
           case "${{ steps.version.outputs.version }}" in *-*) prerelease="--prerelease" ;; esac
           gh release create "$GITHUB_REF_NAME" $prerelease \
@@ -77,3 +84,11 @@ jobs:
             --notes-file notes.md \
             ~/.m2/repository/io/github/ohchankyu/puretx-core/${{ steps.version.outputs.version }}/*.jar \
             ~/.m2/repository/io/github/ohchankyu/puretx-spring-boot-starter/${{ steps.version.outputs.version }}/*.jar
+
+      - name: Publish to Maven Central
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+          CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
+        run: ./gradlew nmcpPublishAggregationToCentralPortal --no-daemon -x test -Pversion=${{ steps.version.outputs.version }}

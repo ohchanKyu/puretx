@@ -7,6 +7,17 @@ change the API.
 
 ## [Unreleased]
 
+## [0.1.0-rc2] - 2026-09-26
+
+### Added
+
+- Published to Maven Central as `io.github.ohchankyu:puretx-spring-boot-starter`. No extra
+  repository is needed any more; the JitPack coordinate keeps working but is no longer documented.
+
+### Changed
+
+- Build tooling: Gradle 9.7, Lombok 1.18.48, feign-core 13.15, current GitHub Actions.
+
 ## [0.1.0-rc1] - 2026-09-25
 
 First tagged version, served from JitPack.
@@ -33,5 +44,6 @@ First tagged version, served from JitPack.
 - `Automatic-Module-Name` in both jars: `io.github.ohchankyu.puretx` and
   `io.github.ohchankyu.puretx.spring`.
 
-[Unreleased]: https://github.com/ohchanKyu/puretx/compare/v0.1.0-rc1...HEAD
+[Unreleased]: https://github.com/ohchanKyu/puretx/compare/v0.1.0-rc2...HEAD
+[0.1.0-rc2]: https://github.com/ohchanKyu/puretx/compare/v0.1.0-rc1...v0.1.0-rc2
 [0.1.0-rc1]: https://github.com/ohchanKyu/puretx/releases/tag/v0.1.0-rc1

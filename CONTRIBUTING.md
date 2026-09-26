@@ -56,5 +56,7 @@ git tag v0.2.0
 git push origin v0.2.0
 ```
 
-The release workflow runs the full Boot matrix, builds the artifacts under that version and opens
-a GitHub release with the changelog section as its notes. JitPack serves the tag on its own.
+The release workflow runs the full Boot matrix, builds and signs the artifacts under that
+version, opens a GitHub release with the changelog section as its notes, and publishes to Maven
+Central. A version on Central cannot be re-uploaded, so if that last step fails, fix the cause and
+re-run the failed job instead of pushing a new tag.

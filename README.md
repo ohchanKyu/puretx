@@ -1,6 +1,7 @@
 # puretx
 
 [![build](https://github.com/ohchanKyu/puretx/actions/workflows/build.yml/badge.svg)](https://github.com/ohchanKyu/puretx/actions/workflows/build.yml)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.ohchankyu/puretx-spring-boot-starter.svg?label=maven%20central)](https://central.sonatype.com/artifact/io.github.ohchankyu/puretx-spring-boot-starter)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 **Find the work that should not be inside your Spring transactions.**
@@ -34,19 +35,20 @@ production, at the worst possible time. puretx moves that discovery forward to t
 
 ## Getting started
 
-Not on Maven Central yet — served from JitPack while the API settles.
-
 ```kotlin
-repositories {
-    mavenCentral()
-    maven { url = uri("https://jitpack.io") }
-}
-
-implementation("com.github.ohchanKyu.puretx:puretx-spring-boot-starter:v0.1.0-rc1")
+implementation("io.github.ohchankyu:puretx-spring-boot-starter:0.1.0-rc2")
 ```
 
-The coordinate changes to `io.github.ohchankyu:puretx-spring-boot-starter` on the first Central
-release; the JitPack one is temporary.
+```xml
+<dependency>
+    <groupId>io.github.ohchankyu</groupId>
+    <artifactId>puretx-spring-boot-starter</artifactId>
+    <version>0.1.0-rc2</version>
+</dependency>
+```
+
+It is on Maven Central, so no extra repository is needed. Before 1.0 the API may still move
+between minor versions; the changelog says when it does.
 
 That is the whole setup. puretx defaults to `WARN`, instruments the transaction managers and HTTP
 clients already in your context, and stays out of the way of everything else.
