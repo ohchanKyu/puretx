@@ -12,23 +12,35 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * true while Spring runs {@code afterCommit} callbacks and {@code @TransactionalEventListener(AFTER_COMMIT)}
  * handlers — the very place puretx tells people to move their HTTP calls and their message publishing to.
  * Flagging that would make the library useless, so the scope tracks the post-commit window explicitly.
+ *
+ * <p>The other way round exists too. A manager running with {@code SYNCHRONIZATION_NEVER} —
+ * {@code KafkaTransactionManager}'s default — never sets {@code isActualTransactionActive()} at
+ * all, so that flag alone would make every Kafka transaction invisible. For a scope that took no
+ * synchronization, the question becomes whether its transaction is still bound to this thread,
+ * and a manager answers that by binding its resource: the producer factory, the data source, the
+ * entity manager factory. Suspending the transaction ({@code NOT_SUPPORTED}, {@code NEVER})
+ * unbinds it again, which keeps that case quiet.
  */
 public final class SpringTransactionProbe implements TransactionProbe {
 
     @Override
     public @Nullable TransactionInfo currentTransaction() {
-        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
-            return null;
+        final TransactionScope scope = TransactionScopeManager.current();
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            if (scope != null) {
+                return scope.isPostCompletion() ? null : scope.snapshot();
+            }
+            return new TransactionInfo(
+                    TransactionSynchronizationManager.getCurrentTransactionName(),
+                    -1,
+                    TransactionSynchronizationManager.isCurrentTransactionReadOnly(),
+                    false,
+                    "");
         }
-        TransactionScope scope = TransactionScopeManager.current();
-        if (scope != null) {
-            return scope.isPostCompletion() ? null : scope.snapshot();
+        if (scope != null && !scope.isSynchronised() && !scope.isFinished()
+                && !TransactionSynchronizationManager.getResourceMap().isEmpty()) {
+            return scope.snapshot();
         }
-        return new TransactionInfo(
-                TransactionSynchronizationManager.getCurrentTransactionName(),
-                -1,
-                TransactionSynchronizationManager.isCurrentTransactionReadOnly(),
-                false,
-                "");
+        return null;
     }
 }

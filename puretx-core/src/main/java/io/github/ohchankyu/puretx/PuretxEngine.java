@@ -102,25 +102,8 @@ public final class PuretxEngine {
         if (!isWatching(s, type)) {
             return null;
         }
-        final TransactionInfo tx = probe.currentTransaction();
-        if (tx == null) {
-            return null;
-        }
-        if (tx.testManaged() && !s.detectInTestTransactions()) {
-            return null;
-        }
-        final PackagePatterns patterns = ignore;
-        if (tx.hasName() && (patterns.matches(tx.name()) || patterns.matches(tx.declaringTypeName()))) {
-            return null;
-        }
-        final StackCapture.Result capture = type.reportsCallSite()
-                ? StackCapture.capture(appPackages, s.includeCallPath(), s.callPathDepth())
-                : StackCapture.Result.EMPTY;
-        if (capture.origin() != null && patterns.matches(capture.origin().getClassName())) {
-            return null;
-        }
-        final Detection detection = new Detection(type, summary.get(), tx, capture.origin(), capture.callPath());
-        if (s.mode() == PuretxMode.FAIL) {
+        final Detection detection = detect(s, type, summary, probe.currentTransaction());
+        if (detection != null && s.mode() == PuretxMode.FAIL) {
             throw new ImpureTransactionException(record(detection.toViolation(Violation.UNKNOWN_DURATION, Instant.now())));
         }
         return detection;
@@ -149,15 +132,20 @@ public final class PuretxEngine {
     }
 
     /**
-     * Reports a transaction that stayed open past {@code puretx.max-duration}.
+     * Reports a transaction that stayed open past {@code puretx.max-duration}, once it has ended.
      *
      * <p>The threshold, the comparison and the wording all belong here rather than in whichever
-     * framework hook happens to notice the commit — that hook's job is to supply the elapsed time.
+     * framework hook happens to notice the end — that hook's job is to say how long it took.
      *
+     * @param transaction the transaction as it ended, handed over directly rather than asked of
+     *                    the probe: by the time a transaction is over, the probe rightly answers
+     *                    that no transaction is open
+     * @param elapsedMillis how long the transaction was held, everything included
      * @param quiet suppress the {@link PuretxMode#FAIL} exception. Set on the rollback path, where
      *              throwing would mask the failure that caused the rollback in the first place
+     * @throws ImpureTransactionException in {@link PuretxMode#FAIL} unless {@code quiet}
      */
-    public void reportLongTransaction(final long elapsedMillis, final boolean quiet) {
+    public void reportLongTransaction(final TransactionInfo transaction, final long elapsedMillis, final boolean quiet) {
         final PuretxSettings s = settings;
         if (!isWatching(s, ViolationType.LONG_TRANSACTION) || !s.durationCheckEnabled()) {
             return;
@@ -168,17 +156,13 @@ public final class PuretxEngine {
         }
         final Supplier<String> summary =
                 () -> String.format(Locale.ROOT, "transaction held past the %,dms limit", limit);
-        try {
-            final Detection detection = start(ViolationType.LONG_TRANSACTION, summary);
-            if (detection == null) {
-                return;
-            }
-            record(detection.toViolation(elapsedMillis, Instant.now()));
-        } catch (ImpureTransactionException ex) {
-            if (quiet) {
-                return;
-            }
-            throw ex;
+        final Detection detection = detect(s, ViolationType.LONG_TRANSACTION, summary, transaction);
+        if (detection == null) {
+            return;
+        }
+        final Violation violation = record(detection.toViolation(elapsedMillis, Instant.now()));
+        if (s.mode() == PuretxMode.FAIL && !quiet) {
+            throw new ImpureTransactionException(violation);
         }
     }
 
@@ -196,6 +180,29 @@ public final class PuretxEngine {
                 // A broken listener must not break the application it is observing.
             }
         }
+    }
+
+    /** Everything that decides whether {@code transaction} plus {@code type} is a violation, minus the mode. */
+    private @Nullable Detection detect(final PuretxSettings s, final ViolationType type,
+            final Supplier<String> summary, final @Nullable TransactionInfo transaction) {
+        if (transaction == null) {
+            return null;
+        }
+        if (transaction.testManaged() && !s.detectInTestTransactions()) {
+            return null;
+        }
+        final PackagePatterns patterns = ignore;
+        if (transaction.hasName()
+                && (patterns.matches(transaction.name()) || patterns.matches(transaction.declaringTypeName()))) {
+            return null;
+        }
+        final StackCapture.Result capture = type.reportsCallSite()
+                ? StackCapture.capture(appPackages, s.includeCallPath(), s.callPathDepth())
+                : StackCapture.Result.EMPTY;
+        if (capture.origin() != null && patterns.matches(capture.origin().getClassName())) {
+            return null;
+        }
+        return new Detection(type, summary.get(), transaction, capture.origin(), capture.callPath());
     }
 
     /**

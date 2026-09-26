@@ -7,6 +7,22 @@ change the API.
 
 ## [Unreleased]
 
+### Fixed
+
+- A transaction's length is now measured when it ends, not at the start of `beforeCommit`. The
+  flush, `BEFORE_COMMIT` listeners and the commit itself were left out, which is exactly where a
+  slow transaction is slow: a summary could say 812ms while the 500ms limit went unreported.
+- Transactions run without synchronization are visible. `KafkaTransactionManager` defaults to
+  `SYNCHRONIZATION_NEVER`, and puretx relied on the flag that setting never sets, so an HTTP call
+  inside a Kafka transaction was never reported and the transaction was never timed.
+- In `FAIL` mode a long transaction is reported after its commit rather than before it, so the
+  test fails and the data stays. It also carries its duration now instead of `-1`, so it reaches
+  the Micrometer timer.
+- `ImpureTransactionException` no longer holds the live transaction object. Kept by a test
+  report or an error tracker, it pinned the connection and persistence context behind it.
+- A call refused in `FAIL` mode is no longer counted in the transaction summary as an external
+  call that took 0ms.
+
 ## [0.1.0-rc2] - 2026-09-26
 
 ### Added

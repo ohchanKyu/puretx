@@ -55,6 +55,18 @@ class TransactionDurationTests {
                 assertThat(violation.type()).isEqualTo(ViolationType.LONG_TRANSACTION));
     }
 
+    @Test
+    @DisplayName("time spent flushing and committing counts: the transaction is held for that too")
+    void countsTheCommitItself() {
+        orderService.orderWithSlowCommit(900);
+
+        assertThat(engine.store().all()).singleElement().satisfies(violation -> {
+            assertThat(violation.type()).isEqualTo(ViolationType.LONG_TRANSACTION);
+            assertThat(violation.durationMillis()).isGreaterThanOrEqualTo(900);
+            assertThat(violation.transaction().elapsedMillis()).isGreaterThanOrEqualTo(900);
+        });
+    }
+
     // A 400ms margin either side of the threshold, because a cold CI runner acquiring its first
     // JDBC connection is slower than anything this test is actually trying to measure.
     @Test

@@ -49,13 +49,55 @@ class PuretxEngineTests {
     }
 
     @Test
-    @DisplayName("reportQuietly records in FAIL mode but keeps the exception to itself")
+    @DisplayName("a quiet long-transaction report records in FAIL mode but keeps the exception to itself")
     void quietReportingNeverThrows() {
         PuretxEngine engine = engine(PuretxSettings.builder().mode(PuretxMode.FAIL).build(), () -> ACTIVE);
 
-        engine.reportLongTransaction(4000, true);
+        engine.reportLongTransaction(ACTIVE, 4000, true);
 
         assertThat(engine.store().all()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("a long transaction in FAIL mode throws with the duration it already knows")
+    void longTransactionFailureCarriesItsDuration() {
+        PuretxEngine engine = engine(PuretxSettings.builder().mode(PuretxMode.FAIL).build(), () -> ACTIVE);
+
+        assertThatThrownBy(() -> engine.reportLongTransaction(ACTIVE, 4000, false))
+                .isInstanceOf(ImpureTransactionException.class)
+                .satisfies(ex -> {
+                    final Violation violation = ((ImpureTransactionException) ex).violation();
+                    assertThat(violation.hasDuration()).isTrue();
+                    assertThat(violation.durationMillis()).isEqualTo(4000);
+                });
+        assertThat(engine.store().all()).singleElement().satisfies(violation ->
+                assertThat(violation.durationMillis()).isEqualTo(4000));
+    }
+
+    @Test
+    @DisplayName("a long transaction is judged on the snapshot it is handed, not on the probe")
+    void longTransactionDoesNotAskTheProbe() {
+        PuretxEngine engine = engine(PuretxSettings.builder().build(), TransactionProbe.NONE);
+
+        engine.reportLongTransaction(ACTIVE, 4000, false);
+
+        assertThat(engine.store().all()).singleElement().satisfies(violation ->
+                assertThat(violation.transaction().name()).isEqualTo(ACTIVE.name()));
+    }
+
+    @Test
+    @DisplayName("the exception does not keep the live transaction object the probe handed over")
+    void exceptionDoesNotRetainTheProbesSourceObject() {
+        final Object liveFrameworkObject = new Object();
+        final PuretxEngine engine = engine(PuretxSettings.builder().mode(PuretxMode.FAIL).build(),
+                () -> new TransactionInfo("com.acme.orders.OrderService.createOrder", 12, false, false,
+                        "JdbcTransactionManager", liveFrameworkObject));
+
+        assertThatThrownBy(() -> engine.report(ViolationType.HTTP_CALL, () -> "HTTP GET https://example.com"))
+                .isInstanceOf(ImpureTransactionException.class)
+                .satisfies(ex -> assertThat(((ImpureTransactionException) ex).violation().transaction().source())
+                        .as("an exception is kept by test reports and error trackers")
+                        .isNull());
     }
 
     @Test

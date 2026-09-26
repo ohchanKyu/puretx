@@ -22,4 +22,9 @@ public class InventoryService {
         jdbcTemplate.execute("select 1");
         paymentClient.charge(url);
     }
+
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public void checkOutsideTransaction(final String url) {
+        paymentClient.charge(url);
+    }
 }

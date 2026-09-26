@@ -23,9 +23,10 @@ public enum PuretxMode {
      * Throw {@link ImpureTransactionException} at the offending call site.
      * Intended for tests and CI, where a new violation should break the build.
      *
-     * <p>The exception aborts the unit of work: for a call, it is thrown before the call inside
-     * the transactional method, and for a transaction held too long, just before the commit.
-     * Either way the transaction rolls back and nothing it wrote survives.
+     * <p>For a call, the exception is thrown before the call, inside the transactional method,
+     * so the transaction rolls back and nothing it wrote survives. For a transaction held too
+     * long it is thrown after the commit, because that is when its length is known; the caller
+     * still gets the exception, and the data stays.
      */
     FAIL;
 

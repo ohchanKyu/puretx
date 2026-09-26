@@ -127,11 +127,12 @@ puretx:
 In `FAIL` mode the exception is thrown *before* the call goes out, so a test does not have to reach —
 or wait for — the system it should not have been calling.
 
-**`FAIL` aborts the unit of work it complains about.** The exception comes up through your
+**`FAIL` refuses the call and rolls the transaction back.** The exception comes up through your
 service method like any other, so Spring rolls the transaction back: a row inserted before the
-offending call is gone. A transaction held past `max-duration` is reported just before its commit,
-so it rolls back too, and everything it did goes with it. That is the whole reason `FAIL` is for
-tests. A test fails either way; production would lose data.
+offending call is gone. A transaction held past `max-duration` is the one exception. Its length
+is only known once it has ended, so the exception surfaces after the commit: the test fails, the
+data stays. There is nothing left to abort by then, and rolling a finished transaction back for
+being slow would turn a latency problem into a data problem. Either way `FAIL` is for tests.
 
 The duration check is the one that depends on the machine. A cold CI runner can hold a
 transaction past three seconds while doing nothing wrong, and in `FAIL` that flakes the build.
@@ -332,8 +333,9 @@ query counting. All three are somebody else's library.
   in Spring Framework 6.1). CI runs the whole test suite against the oldest and newest Boot 3
   and every Boot 4 line, so "supported" means "tested", not "probably fine".
 
-Transaction tracking covers any `AbstractPlatformTransactionManager` — JDBC, JPA, JTA, Kafka.
-Reactive transaction managers are not covered; puretx's detection is thread-bound.
+Transaction tracking covers any `AbstractPlatformTransactionManager` — JDBC, JPA, JTA, Kafka —
+including one that runs without transaction synchronization, which is `KafkaTransactionManager`'s
+default. Reactive transaction managers are not covered; puretx's detection is thread-bound.
 
 ## Modules
 
