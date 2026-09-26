@@ -20,8 +20,12 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * it is meant to work. Wrapping the producer keeps the exception on the caller's stack.
  *
  * <p>Publishing inside a Kafka-managed transaction is not a violation and is not reported: that is
- * the transactional producer working as designed. Only a message published inside somebody else's
- * transaction — a database one, typically — is the problem, because a rollback there cannot unsend it.
+ * the transactional producer working as designed. That includes a transactional
+ * {@code KafkaTemplate} used inside a database transaction, which Spring Kafka joins to it and
+ * commits after the database commit; the producer factory is bound to the transaction either
+ * way, and that binding is what this checks. Only a non-transactional producer inside somebody
+ * else's transaction — a database one, typically — is the problem, because a rollback there
+ * cannot unsend the message.
  */
 final class PuretxProducerProxy implements InvocationHandler {
 
