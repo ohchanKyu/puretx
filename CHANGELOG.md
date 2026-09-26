@@ -26,6 +26,8 @@ change the API.
   publishes. Spring Kafka copies the producer factory for such a template and binds the copy to
   the transaction, while puretx looked for the original; the producer's own transaction state is
   what is checked now, whichever factory made it.
+- A `RestTemplate` bean built from `RestTemplateBuilder` is counted once in the startup report,
+  not as both a `RestTemplate.Builder` and a `RestTemplate`.
 
 ## [0.1.0-rc2] - 2026-09-26
 
