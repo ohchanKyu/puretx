@@ -121,6 +121,29 @@ public class OrderService {
         Puretx.suppress(() -> paymentClient.charge(url));
     }
 
+    /** Writes a row, then makes the call: what FAIL mode does to that row is the question. */
+    @Transactional
+    public void recordThenCharge(final String url) {
+        record();
+        paymentClient.charge(url);
+    }
+
+    /** Writes a row, then holds the transaction open past the limit. */
+    @Transactional
+    public void recordThenLinger(final long millis) {
+        record();
+        sleep(millis);
+    }
+
+    public int recordedOrders() {
+        return jdbcTemplate.queryForObject("select count(*) from recorded_orders", Integer.class);
+    }
+
+    private void record() {
+        jdbcTemplate.execute("create table if not exists recorded_orders (item varchar(64))");
+        jdbcTemplate.update("insert into recorded_orders (item) values ('a book')");
+    }
+
     /** Holds the transaction open without doing anything else wrong. */
     @Transactional
     public void slowOrder(final long millis) {
