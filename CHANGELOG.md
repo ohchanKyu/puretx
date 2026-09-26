@@ -7,6 +7,10 @@ change the API.
 
 ## [Unreleased]
 
+## [0.1.0-rc3] - 2026-09-26
+
+Everything in here came from running rc2 on a real codebase.
+
 ### Fixed
 
 - A transaction's length is now measured when it ends, not at the start of `beforeCommit`. The
@@ -66,6 +70,7 @@ First tagged version, served from JitPack.
 - `Automatic-Module-Name` in both jars: `io.github.ohchankyu.puretx` and
   `io.github.ohchankyu.puretx.spring`.
 
-[Unreleased]: https://github.com/ohchanKyu/puretx/compare/v0.1.0-rc2...HEAD
+[Unreleased]: https://github.com/ohchanKyu/puretx/compare/v0.1.0-rc3...HEAD
+[0.1.0-rc3]: https://github.com/ohchanKyu/puretx/compare/v0.1.0-rc2...v0.1.0-rc3
 [0.1.0-rc2]: https://github.com/ohchanKyu/puretx/compare/v0.1.0-rc1...v0.1.0-rc2
 [0.1.0-rc1]: https://github.com/ohchanKyu/puretx/releases/tag/v0.1.0-rc1
