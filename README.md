@@ -127,6 +127,18 @@ puretx:
 In `FAIL` mode the exception is thrown *before* the call goes out, so a test does not have to reach —
 or wait for — the system it should not have been calling.
 
+**`FAIL` aborts the unit of work it complains about.** The exception comes up through your
+service method like any other, so Spring rolls the transaction back: a row inserted before the
+offending call is gone. A transaction held past `max-duration` is reported just before its commit,
+so it rolls back too, and everything it did goes with it. That is the whole reason `FAIL` is for
+tests. A test fails either way; production would lose data.
+
+The duration check is the one that depends on the machine. A cold CI runner can hold a
+transaction past three seconds while doing nothing wrong, and in `FAIL` that flakes the build.
+If it does, raise `max-duration` in the test profile or turn that detector off there with
+`puretx.detectors.duration: false`; the HTTP and messaging checks are deterministic and lose
+nothing.
+
 > **Put `@Transactional` on the service, not on the test.** A `@Transactional` test method wraps
 > everything — fixtures, the code under test, the assertions — in one transaction that only exists
 > because of the test harness. puretx ignores those by default (`puretx.detect-in-test-transactions`),
