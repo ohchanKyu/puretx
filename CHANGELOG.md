@@ -7,6 +7,13 @@ change the API.
 
 ## [Unreleased]
 
+### Fixed
+
+- A `RestTemplate` or `RestClient` call is timed until the response status arrives. With the
+  default `HttpURLConnection` factory behind `new RestTemplate()` the request returns before the
+  server has answered, so a 400ms call was reported as 9ms and the transaction summary blamed
+  it for 2% of a transaction it had held for most of.
+
 ## [0.1.0-rc3] - 2026-09-26
 
 Everything in here came from running rc2 on a real codebase.

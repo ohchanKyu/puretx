@@ -82,6 +82,16 @@ public final class PuretxClientHttpRequestInterceptor implements ClientHttpReque
         return true;
     }
 
+    /**
+     * Times the call up to the arrival of the response status, not merely the return of
+     * {@code execute}.
+     *
+     * <p>{@code SimpleClientHttpRequestFactory}, the default behind {@code new RestTemplate()},
+     * returns as soon as the request is written and only waits for the server when the status
+     * is first asked for. Timed at {@code execute}, a call to a server that took 400ms read as
+     * 9ms. Asking for the status here is what the template does next anyway, so nothing is
+     * read twice; the body still streams to the caller afterwards.
+     */
     @Override
     public ClientHttpResponse intercept(final HttpRequest request, final byte[] body, final ClientHttpRequestExecution execution) throws IOException {
         final Detection detection =
@@ -90,7 +100,9 @@ public final class PuretxClientHttpRequestInterceptor implements ClientHttpReque
             return execution.execute(request, body);
         }
         try {
-            return execution.execute(request, body);
+            final ClientHttpResponse response = execution.execute(request, body);
+            response.getStatusCode();
+            return response;
         } finally {
             engineSupplier.get().finish(detection);
         }
