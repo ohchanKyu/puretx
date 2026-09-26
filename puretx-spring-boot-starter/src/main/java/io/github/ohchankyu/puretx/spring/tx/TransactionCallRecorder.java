@@ -1,6 +1,7 @@
 package io.github.ohchankyu.puretx.spring.tx;
 
 import io.github.ohchankyu.puretx.PuretxEngine;
+import io.github.ohchankyu.puretx.PuretxMode;
 import io.github.ohchankyu.puretx.TransactionSummary;
 import io.github.ohchankyu.puretx.Violation;
 import io.github.ohchankyu.puretx.ViolationListener;
@@ -14,8 +15,10 @@ import java.util.function.Supplier;
  * {@code source} the probe put on {@code TransactionInfo}.
  *
  * <p>A long transaction is the transaction rather than something inside it, so it is not counted
- * as a call. A call that arrives once its transaction has ended emits the summary itself: the one
- * offered when the transaction finished was empty and never sent.
+ * as a call. Neither is anything in {@code FAIL} mode: there the violation is thrown before the
+ * call goes out, so there was no call to add up, and a summary claiming one would be wrong. A
+ * call that arrives once its transaction has ended emits the summary itself: the one offered when
+ * the transaction finished was empty and never sent.
  */
 final class TransactionCallRecorder implements ViolationListener {
 
@@ -31,6 +34,9 @@ final class TransactionCallRecorder implements ViolationListener {
             return;
         }
         if (!(violation.transaction().source() instanceof TransactionScope scope)) {
+            return;
+        }
+        if (engine.get().settings().mode() == PuretxMode.FAIL) {
             return;
         }
         scope.recordCall(violation.durationMillis());

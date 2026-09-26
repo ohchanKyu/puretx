@@ -144,6 +144,25 @@ public class OrderService {
         jdbcTemplate.update("insert into recorded_orders (item) values ('a book')");
     }
 
+    /** Quick until the commit, then slow inside it: a large flush, or a BEFORE_COMMIT listener. */
+    @Transactional
+    public void orderWithSlowCommit(final long millis) {
+        save();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void beforeCommit(final boolean readOnly) {
+                sleep(millis);
+            }
+        });
+    }
+
+    /** The call happens with the transaction suspended, which is as good as outside it. */
+    @Transactional
+    public void createOrderWithNonTransactionalCheck(final String url) {
+        save();
+        inventoryService.checkOutsideTransaction(url);
+    }
+
     /** Holds the transaction open without doing anything else wrong. */
     @Transactional
     public void slowOrder(final long millis) {

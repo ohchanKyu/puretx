@@ -15,8 +15,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * FAIL mode aborts the unit of work it complains about, and the README says so. These pin that
- * down: a row written before the violation does not survive it, whichever detector fired.
+ * What FAIL mode does to the transaction it complains about, pinned down per detector.
+ *
+ * <p>A call is refused before it goes out, and the exception rolls the transaction back like any
+ * other. A transaction held too long is a different shape: by the time its length is known it
+ * has already committed, so the exception surfaces after the commit and the data stays. There is
+ * nothing left to abort, and rolling back a finished transaction for being slow would turn a
+ * latency problem into a data problem.
  */
 @SpringBootTest(
         classes = PuretxTestApplication.class,
@@ -49,12 +54,12 @@ class FailModeRollbackTests {
     }
 
     @Test
-    @DisplayName("a transaction held too long fails at commit, and what it wrote rolls back with it")
-    void longTransactionFailsAtCommitAndRollsBack() {
+    @DisplayName("a transaction held too long fails after its commit, so what it wrote stays")
+    void longTransactionFailsAfterCommitAndKeepsItsWrites() {
         assertThatThrownBy(() -> orderService.recordThenLinger(600))
                 .isInstanceOf(ImpureTransactionException.class)
                 .hasMessageContaining("transaction held past the 300ms limit");
 
-        assertThat(orderService.recordedOrders()).isZero();
+        assertThat(orderService.recordedOrders()).isEqualTo(1);
     }
 }

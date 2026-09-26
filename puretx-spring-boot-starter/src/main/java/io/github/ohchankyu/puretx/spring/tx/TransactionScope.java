@@ -38,7 +38,14 @@ public final class TransactionScope {
     @Getter
     private boolean postCompletion;
 
-    private boolean durationReported;
+    /**
+     * Whether Spring accepted a synchronization for this transaction. A manager running with
+     * {@code SYNCHRONIZATION_NEVER} — {@code KafkaTransactionManager}'s default — takes none, and
+     * then never tells {@code TransactionSynchronizationManager} that a transaction is active
+     * either. The probe needs to know which kind it is looking at.
+     */
+    @Getter
+    private boolean synchronised;
 
     private final AtomicBoolean summaryReported = new AtomicBoolean();
 
@@ -77,8 +84,17 @@ public final class TransactionScope {
         return (System.nanoTime() - startNanos) / 1_000_000L;
     }
 
+    /** How long the transaction was held: frozen once it ended, still running until then. */
+    public long heldMillis() {
+        return endedMillis >= 0 ? endedMillis : elapsedMillis();
+    }
+
     void markPostCompletion() {
         this.postCompletion = true;
+    }
+
+    void markSynchronised() {
+        this.synchronised = true;
     }
 
     /** True once this scope, or the transaction behind it, is done with. */
@@ -108,9 +124,15 @@ public final class TransactionScope {
      * Marks the transaction as over, so a call recorded after this knows it arrived late.
      *
      * <p>Freezes how long it was held, because a call recorded after the commit summarises from
-     * its own thread and would otherwise measure the transaction as lasting until then.
+     * its own thread and would otherwise measure the transaction as lasting until then. The first
+     * caller wins: the synchronization sees the commit before any post-commit callback runs, and
+     * the execution listener, which arrives after all of them, must not stretch the figure to
+     * cover work that happened once the transaction was already over.
      */
     void markEnded() {
+        if (ended) {
+            return;
+        }
         this.endedMillis = elapsedMillis();
         this.ended = true;
     }
@@ -131,19 +153,10 @@ public final class TransactionScope {
         if (calls == 0 || !summaryReported.compareAndSet(false, true)) {
             return null;
         }
-        final long held = endedMillis >= 0 ? endedMillis : elapsedMillis();
-        return new TransactionSummary(name, held, calls, callMillis.get());
-    }
-
-    boolean claimDurationReport() {
-        if (durationReported) {
-            return false;
-        }
-        durationReported = true;
-        return true;
+        return new TransactionSummary(name, heldMillis(), calls, callMillis.get());
     }
 
     public TransactionInfo snapshot() {
-        return new TransactionInfo(name, elapsedMillis(), readOnly, testManaged, managerType, this);
+        return new TransactionInfo(name, heldMillis(), readOnly, testManaged, managerType, this);
     }
 }

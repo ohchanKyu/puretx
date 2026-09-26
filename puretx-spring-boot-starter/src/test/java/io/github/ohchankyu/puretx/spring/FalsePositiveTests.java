@@ -78,6 +78,14 @@ class FalsePositiveTests {
     }
 
     @Test
+    @DisplayName("a call made while the transaction is suspended (NOT_SUPPORTED) is not inside it")
+    void ignoresCallsMadeWhileTheTransactionIsSuspended() {
+        orderService.createOrderWithNonTransactionalCheck(server.url());
+
+        assertThat(engine.store().all()).isEmpty();
+    }
+
+    @Test
     @DisplayName("a transaction that finishes inside the threshold is not reported")
     void ignoresShortTransactions() {
         orderService.slowOrder(5);
