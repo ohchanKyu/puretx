@@ -36,14 +36,14 @@ production, at the worst possible time. puretx moves that discovery forward to t
 ## Getting started
 
 ```kotlin
-implementation("io.github.ohchankyu:puretx-spring-boot-starter:0.1.0-rc6")
+implementation("io.github.ohchankyu:puretx-spring-boot-starter:0.1.0-rc7")
 ```
 
 ```xml
 <dependency>
     <groupId>io.github.ohchankyu</groupId>
     <artifactId>puretx-spring-boot-starter</artifactId>
-    <version>0.1.0-rc6</version>
+    <version>0.1.0-rc7</version>
 </dependency>
 ```
 

@@ -7,6 +7,8 @@ change the API.
 
 ## [Unreleased]
 
+## [0.1.0-rc7] - 2026-09-26
+
 ### Fixed
 
 - An HTTP call is timed until its response body has been read, not until the status arrives.
@@ -129,7 +131,8 @@ First tagged version, served from JitPack.
 - `Automatic-Module-Name` in both jars: `io.github.ohchankyu.puretx` and
   `io.github.ohchankyu.puretx.spring`.
 
-[Unreleased]: https://github.com/ohchanKyu/puretx/compare/v0.1.0-rc6...HEAD
+[Unreleased]: https://github.com/ohchanKyu/puretx/compare/v0.1.0-rc7...HEAD
+[0.1.0-rc7]: https://github.com/ohchanKyu/puretx/compare/v0.1.0-rc6...v0.1.0-rc7
 [0.1.0-rc6]: https://github.com/ohchanKyu/puretx/compare/v0.1.0-rc5...v0.1.0-rc6
 [0.1.0-rc5]: https://github.com/ohchanKyu/puretx/compare/v0.1.0-rc4...v0.1.0-rc5
 [0.1.0-rc4]: https://github.com/ohchanKyu/puretx/compare/v0.1.0-rc3...v0.1.0-rc4
