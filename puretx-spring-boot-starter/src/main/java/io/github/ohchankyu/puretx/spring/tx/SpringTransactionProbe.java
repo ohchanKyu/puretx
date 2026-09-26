@@ -17,9 +17,11 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * {@code KafkaTransactionManager}'s default — never sets {@code isActualTransactionActive()} at
  * all, so that flag alone would make every Kafka transaction invisible. For a scope that took no
  * synchronization, the question becomes whether its transaction is still bound to this thread,
- * and a manager answers that by binding its resource: the producer factory, the data source, the
- * entity manager factory. Suspending the transaction ({@code NOT_SUPPORTED}, {@code NEVER})
- * unbinds it again, which keeps that case quiet.
+ * and a manager answers that by binding its own resource: the producer factory, the data source,
+ * the entity manager factory. Suspending the transaction ({@code NOT_SUPPORTED}, {@code NEVER})
+ * unbinds it again, which keeps that case quiet. It has to be the manager's own key: "any
+ * resource at all" is wrong, because Spring Boot's open-in-view keeps an entity manager bound
+ * for the whole request, transaction or not.
  */
 public final class SpringTransactionProbe implements TransactionProbe {
 
@@ -37,9 +39,11 @@ public final class SpringTransactionProbe implements TransactionProbe {
                     false,
                     "");
         }
-        if (scope != null && !scope.isSynchronised() && !scope.isFinished()
-                && !TransactionSynchronizationManager.getResourceMap().isEmpty()) {
-            return scope.snapshot();
+        if (scope != null && !scope.isSynchronised() && !scope.isFinished()) {
+            final Object resourceKey = scope.resourceKey();
+            if (resourceKey != null && TransactionSynchronizationManager.hasResource(resourceKey)) {
+                return scope.snapshot();
+            }
         }
         return null;
     }

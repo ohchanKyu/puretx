@@ -137,33 +137,33 @@ public final class PuretxEngine {
      * <p>The threshold, the comparison and the wording all belong here rather than in whichever
      * framework hook happens to notice the end — that hook's job is to say how long it took.
      *
+     * <p>Never throws, whatever the mode. A transaction that is already over cannot be aborted,
+     * and whether its violation should fail the caller depends on things only the framework hook
+     * knows: whether the transaction rolled back, and whether it was nested inside another. The
+     * hook gets the violation back and decides.
+     *
      * @param transaction the transaction as it ended, handed over directly rather than asked of
      *                    the probe: by the time a transaction is over, the probe rightly answers
      *                    that no transaction is open
      * @param elapsedMillis how long the transaction was held, everything included
-     * @param quiet suppress the {@link PuretxMode#FAIL} exception. Set on the rollback path, where
-     *              throwing would mask the failure that caused the rollback in the first place
-     * @throws ImpureTransactionException in {@link PuretxMode#FAIL} unless {@code quiet}
+     * @return the recorded violation, or {@code null} when there is nothing to report
      */
-    public void reportLongTransaction(final TransactionInfo transaction, final long elapsedMillis, final boolean quiet) {
+    public @Nullable Violation reportLongTransaction(final TransactionInfo transaction, final long elapsedMillis) {
         final PuretxSettings s = settings;
         if (!isWatching(s, ViolationType.LONG_TRANSACTION) || !s.durationCheckEnabled()) {
-            return;
+            return null;
         }
         final long limit = s.maxDurationMillis();
         if (elapsedMillis < limit) {
-            return;
+            return null;
         }
         final Supplier<String> summary =
                 () -> String.format(Locale.ROOT, "transaction held past the %,dms limit", limit);
         final Detection detection = detect(s, ViolationType.LONG_TRANSACTION, summary, transaction);
         if (detection == null) {
-            return;
+            return null;
         }
-        final Violation violation = record(detection.toViolation(elapsedMillis, Instant.now()));
-        if (s.mode() == PuretxMode.FAIL && !quiet) {
-            throw new ImpureTransactionException(violation);
-        }
+        return record(detection.toViolation(elapsedMillis, Instant.now()));
     }
 
     /**

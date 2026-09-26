@@ -2,6 +2,7 @@ package io.github.ohchankyu.puretx.spring.tx;
 
 import io.github.ohchankyu.puretx.TransactionInfo;
 import io.github.ohchankyu.puretx.TransactionSummary;
+import io.github.ohchankyu.puretx.Violation;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -28,6 +29,20 @@ public final class TransactionScope {
     private final boolean testManaged;
 
     private final String managerType;
+
+    /**
+     * What the manager bound to the thread for this transaction, or {@code null} if it binds
+     * nothing. For a scope without synchronization this is the only way to tell "still open"
+     * from "suspended": the manager unbinds it on suspend and binds it again on resume.
+     */
+    private final @Nullable Object resourceKey;
+
+    /**
+     * A {@code FAIL}-mode duration violation from an inner transaction, held until this one
+     * commits so that the exception never rolls an outer transaction back around a committed
+     * inner one.
+     */
+    private volatile @Nullable Violation deferredFailure;
 
     /**
      * True once the transaction has committed (or rolled back) and Spring is running the
@@ -66,14 +81,30 @@ public final class TransactionScope {
         final String name,
         final boolean readOnly,
         final boolean testManaged,
-        final String managerType
+        final String managerType,
+        final @Nullable Object resourceKey
     ) {
         this.execution = execution;
         this.name = name;
         this.readOnly = readOnly;
         this.testManaged = testManaged;
         this.managerType = managerType;
+        this.resourceKey = resourceKey;
         this.startNanos = System.nanoTime();
+    }
+
+    public @Nullable Object resourceKey() {
+        return resourceKey;
+    }
+
+    void deferFailure(final Violation failure) {
+        if (deferredFailure == null) {
+            deferredFailure = failure;
+        }
+    }
+
+    @Nullable Violation deferredFailure() {
+        return deferredFailure;
     }
 
     public TransactionExecution execution() {

@@ -132,7 +132,10 @@ service method like any other, so Spring rolls the transaction back: a row inser
 offending call is gone. A transaction held past `max-duration` is the one exception. Its length
 is only known once it has ended, so the exception surfaces after the commit: the test fails, the
 data stays. There is nothing left to abort by then, and rolling a finished transaction back for
-being slow would turn a latency problem into a data problem. Either way `FAIL` is for tests.
+being slow would turn a latency problem into a data problem. When the slow transaction was an
+inner `REQUIRES_NEW` one, the exception waits until the outermost transaction has committed as
+well, so it never rolls an outer transaction back around a committed inner one. Either way
+`FAIL` is for tests.
 
 The duration check is the one that depends on the machine. A cold CI runner can hold a
 transaction past three seconds while doing nothing wrong, and in `FAIL` that flakes the build.
@@ -228,7 +231,8 @@ those tests were written before the detection was:
 - Publishing inside a Kafka-managed transaction — that is the transactional producer working as designed.
 - A transactional `KafkaTemplate` used inside a database transaction. Spring Kafka joins it to
   that transaction and commits the Kafka side after the database commits, so a rollback takes
-  the message back. Only a non-transactional producer inside a database transaction is reported.
+  the message back. `KafkaTemplate.executeInTransaction` is different: it runs a local Kafka
+  transaction that commits on its own, before the database does, and that one *is* reported.
 - Publishing on a transacted `RabbitTemplate` channel synchronised with the transaction — the
   channel commits after the database does, so a rollback takes the message back.
 - Transactions opened by Spring's TestContext framework around a `@Transactional` test.
@@ -333,9 +337,13 @@ query counting. All three are somebody else's library.
   in Spring Framework 6.1). CI runs the whole test suite against the oldest and newest Boot 3
   and every Boot 4 line, so "supported" means "tested", not "probably fine".
 
-Transaction tracking covers any `AbstractPlatformTransactionManager` — JDBC, JPA, JTA, Kafka —
-including one that runs without transaction synchronization, which is `KafkaTransactionManager`'s
-default. Reactive transaction managers are not covered; puretx's detection is thread-bound.
+Transaction tracking covers any `AbstractPlatformTransactionManager` — JDBC, JPA, JTA, Kafka.
+One that runs without transaction synchronization, which is `KafkaTransactionManager`'s default,
+is covered as long as it binds a resource to the thread, which every manager Spring ships does.
+Reactive transaction managers are not covered; puretx's detection is thread-bound.
+
+A Kafka send is timed until the record is buffered, which includes the wait for metadata and for
+buffer space but not the broker's acknowledgement; that arrives on the producer's own thread.
 
 ## Modules
 

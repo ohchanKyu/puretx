@@ -49,29 +49,17 @@ class PuretxEngineTests {
     }
 
     @Test
-    @DisplayName("a quiet long-transaction report records in FAIL mode but keeps the exception to itself")
-    void quietReportingNeverThrows() {
+    @DisplayName("a long transaction is recorded and handed back, never thrown: the hook decides")
+    void longTransactionIsRecordedAndReturned() {
         PuretxEngine engine = engine(PuretxSettings.builder().mode(PuretxMode.FAIL).build(), () -> ACTIVE);
 
-        engine.reportLongTransaction(ACTIVE, 4000, true);
+        final Violation violation = engine.reportLongTransaction(ACTIVE, 4000);
 
+        assertThat(violation).isNotNull();
+        assertThat(violation.hasDuration()).isTrue();
+        assertThat(violation.durationMillis()).isEqualTo(4000);
         assertThat(engine.store().all()).hasSize(1);
-    }
-
-    @Test
-    @DisplayName("a long transaction in FAIL mode throws with the duration it already knows")
-    void longTransactionFailureCarriesItsDuration() {
-        PuretxEngine engine = engine(PuretxSettings.builder().mode(PuretxMode.FAIL).build(), () -> ACTIVE);
-
-        assertThatThrownBy(() -> engine.reportLongTransaction(ACTIVE, 4000, false))
-                .isInstanceOf(ImpureTransactionException.class)
-                .satisfies(ex -> {
-                    final Violation violation = ((ImpureTransactionException) ex).violation();
-                    assertThat(violation.hasDuration()).isTrue();
-                    assertThat(violation.durationMillis()).isEqualTo(4000);
-                });
-        assertThat(engine.store().all()).singleElement().satisfies(violation ->
-                assertThat(violation.durationMillis()).isEqualTo(4000));
+        assertThat(engine.reportLongTransaction(ACTIVE, 10)).as("under the limit").isNull();
     }
 
     @Test
@@ -79,7 +67,7 @@ class PuretxEngineTests {
     void longTransactionDoesNotAskTheProbe() {
         PuretxEngine engine = engine(PuretxSettings.builder().build(), TransactionProbe.NONE);
 
-        engine.reportLongTransaction(ACTIVE, 4000, false);
+        engine.reportLongTransaction(ACTIVE, 4000);
 
         assertThat(engine.store().all()).singleElement().satisfies(violation ->
                 assertThat(violation.transaction().name()).isEqualTo(ACTIVE.name()));
@@ -98,6 +86,18 @@ class PuretxEngineTests {
                 .satisfies(ex -> assertThat(((ImpureTransactionException) ex).violation().transaction().source())
                         .as("an exception is kept by test reports and error trackers")
                         .isNull());
+    }
+
+    @Test
+    @DisplayName("the exception message carries the call path, because CI is read from the console")
+    void exceptionMessageIncludesTheCallPath() {
+        final PuretxEngine engine = engine(
+                PuretxSettings.builder().mode(PuretxMode.FAIL).appPackages(List.of("io.github.ohchankyu.puretx")).build(),
+                () -> ACTIVE);
+
+        assertThatThrownBy(() -> engine.report(ViolationType.HTTP_CALL, () -> "HTTP GET https://example.com"))
+                .hasMessageContaining("path     :")
+                .hasMessageContaining("PuretxEngineTests");
     }
 
     @Test

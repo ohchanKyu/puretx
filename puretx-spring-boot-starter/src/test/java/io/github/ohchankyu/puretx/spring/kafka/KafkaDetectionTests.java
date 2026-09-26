@@ -17,6 +17,7 @@ import io.github.ohchankyu.puretx.TransactionProbe;
 import io.github.ohchankyu.puretx.ViolationType;
 import io.github.ohchankyu.puretx.spring.InstrumentationReport;
 import java.lang.reflect.Proxy;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +29,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
+import org.springframework.kafka.core.KafkaResourceHolder;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -43,8 +45,8 @@ class KafkaDetectionTests {
     @AfterEach
     void cleanUp() {
         TransactionSynchronizationManager.clear();
-        if (TransactionSynchronizationManager.hasResource(producerFactoryKey)) {
-            TransactionSynchronizationManager.unbindResource(producerFactoryKey);
+        for (final Object key : List.copyOf(TransactionSynchronizationManager.getResourceMap().keySet())) {
+            TransactionSynchronizationManager.unbindResource(key);
         }
     }
 
@@ -52,7 +54,7 @@ class KafkaDetectionTests {
     @DisplayName("a send inside a transaction is reported, and still goes through in WARN mode")
     void reportsSendInsideTransaction() {
         PuretxEngine engine = engine(PuretxMode.WARN, transactionActive());
-        Producer<String, String> producer = PuretxProducerProxy.wrap(fakeProducer(), engine, producerFactoryKey);
+        Producer<String, String> producer = PuretxProducerProxy.wrap(fakeProducer(), engine);
 
         producer.send(new ProducerRecord<>("orders", "key", "payload"));
 
@@ -68,7 +70,7 @@ class KafkaDetectionTests {
     void timesTheSend() {
         final PuretxEngine engine = engine(PuretxMode.WARN, transactionActive());
         final Producer<String, String> producer =
-                PuretxProducerProxy.wrap(slowProducer(30), engine, producerFactoryKey);
+                PuretxProducerProxy.wrap(slowProducer(30), engine);
 
         producer.send(new ProducerRecord<>("orders", "key", "payload"));
 
@@ -80,7 +82,7 @@ class KafkaDetectionTests {
     @DisplayName("a send with no transaction open is not reported")
     void ignoresSendOutsideTransaction() {
         PuretxEngine engine = engine(PuretxMode.WARN, TransactionProbe.NONE);
-        Producer<String, String> producer = PuretxProducerProxy.wrap(fakeProducer(), engine, producerFactoryKey);
+        Producer<String, String> producer = PuretxProducerProxy.wrap(fakeProducer(), engine);
 
         producer.send(new ProducerRecord<>("orders", "key", "payload"));
 
@@ -89,11 +91,12 @@ class KafkaDetectionTests {
     }
 
     @Test
-    @DisplayName("a send inside a Kafka-managed transaction is the transactional producer working as intended")
+    @DisplayName("a send inside a Kafka transaction Spring has tied to the thread is the producer working as intended")
     void ignoresSendInsideKafkaTransaction() {
         PuretxEngine engine = engine(PuretxMode.WARN, transactionActive());
-        Producer<String, String> producer = PuretxProducerProxy.wrap(fakeProducer(), engine, producerFactoryKey);
-        TransactionSynchronizationManager.bindResource(producerFactoryKey, new Object());
+        Producer<String, String> producer = PuretxProducerProxy.wrap(fakeProducer(), engine);
+        producer.beginTransaction();
+        TransactionSynchronizationManager.bindResource(producerFactoryKey, springBinding(producer));
 
         producer.send(new ProducerRecord<>("orders", "key", "payload"));
 
@@ -101,10 +104,25 @@ class KafkaDetectionTests {
     }
 
     @Test
-    @DisplayName("a send between beginTransaction and commit is the producer's own transaction, whichever factory bound it")
-    void ignoresSendWhileTheProducerItselfIsInATransaction() {
+    @DisplayName("a local Kafka transaction inside a database transaction commits first, so it is reported")
+    void reportsALocalKafkaTransactionInsideADatabaseTransaction() {
         PuretxEngine engine = engine(PuretxMode.WARN, transactionActive());
-        Producer<String, String> producer = PuretxProducerProxy.wrap(fakeProducer(), engine, producerFactoryKey);
+        Producer<String, String> producer = PuretxProducerProxy.wrap(fakeProducer(), engine);
+
+        producer.beginTransaction();
+        producer.send(new ProducerRecord<>("orders", "key", "executeInTransaction"));
+        producer.commitTransaction();
+
+        assertThat(engine.store().all()).singleElement().satisfies(violation ->
+                assertThat(violation.summary()).isEqualTo("Kafka send -> topic 'orders'"));
+    }
+
+    @Test
+    @DisplayName("the exemption ends with the Kafka transaction, whichever factory Spring bound")
+    void exemptionEndsWithTheKafkaTransaction() {
+        PuretxEngine engine = engine(PuretxMode.WARN, transactionActive());
+        Producer<String, String> producer = PuretxProducerProxy.wrap(fakeProducer(), engine);
+        TransactionSynchronizationManager.bindResource(new Object(), springBinding(producer));
 
         producer.beginTransaction();
         producer.send(new ProducerRecord<>("orders", "key", "in transaction"));
@@ -117,10 +135,11 @@ class KafkaDetectionTests {
     }
 
     @Test
-    @DisplayName("an aborted transaction ends the producer's transaction too")
-    void abortEndsTheProducersTransaction() {
+    @DisplayName("an aborted Kafka transaction ends the exemption too")
+    void abortEndsTheExemption() {
         PuretxEngine engine = engine(PuretxMode.WARN, transactionActive());
-        Producer<String, String> producer = PuretxProducerProxy.wrap(fakeProducer(), engine, producerFactoryKey);
+        Producer<String, String> producer = PuretxProducerProxy.wrap(fakeProducer(), engine);
+        TransactionSynchronizationManager.bindResource(producerFactoryKey, springBinding(producer));
 
         producer.beginTransaction();
         producer.abortTransaction();
@@ -133,7 +152,7 @@ class KafkaDetectionTests {
     @DisplayName("FAIL mode throws before the record leaves — Kafka's own interceptors could not")
     void throwsBeforeSendingInFailMode() {
         PuretxEngine engine = engine(PuretxMode.FAIL, transactionActive());
-        Producer<String, String> producer = PuretxProducerProxy.wrap(fakeProducer(), engine, producerFactoryKey);
+        Producer<String, String> producer = PuretxProducerProxy.wrap(fakeProducer(), engine);
 
         assertThatThrownBy(() -> producer.send(new ProducerRecord<>("orders", "key", "payload")))
                 .isInstanceOf(ImpureTransactionException.class)
@@ -181,6 +200,11 @@ class KafkaDetectionTests {
                 .anySatisfy(message -> assertThat(message)
                         .contains("does not support producer post-processors"))
                 .noneSatisfy(message -> assertThat(message).contains("Kafka producer factory"));
+    }
+
+    /** What Spring binds when it ties a Kafka transaction to the surrounding one. */
+    private static KafkaResourceHolder<String, String> springBinding(final Producer<String, String> producer) {
+        return new KafkaResourceHolder<>(producer, Duration.ofSeconds(5));
     }
 
     private static List<ILoggingEvent> captureLog() {

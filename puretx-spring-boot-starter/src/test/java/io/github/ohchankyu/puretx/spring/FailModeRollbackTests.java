@@ -7,6 +7,7 @@ import com.acme.orders.OrderService;
 import com.acme.orders.PuretxTestApplication;
 import com.acme.orders.StubHttpServer;
 import io.github.ohchankyu.puretx.ImpureTransactionException;
+import io.github.ohchankyu.puretx.PuretxEngine;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -38,10 +39,14 @@ class FailModeRollbackTests {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private PuretxEngine engine;
+
     @BeforeEach
     void emptyTable() {
         jdbcTemplate.execute("create table if not exists recorded_orders (item varchar(64))");
         jdbcTemplate.execute("delete from recorded_orders");
+        engine.store().clear();
     }
 
     @Test
@@ -61,5 +66,20 @@ class FailModeRollbackTests {
                 .hasMessageContaining("transaction held past the 300ms limit");
 
         assertThat(orderService.recordedOrders()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("a slow inner REQUIRES_NEW transaction fails the outer call after both have committed")
+    void slowInnerTransactionFailsAfterTheOuterCommit() {
+        assertThatThrownBy(() -> orderService.recordThenLingerInNewTransaction(600))
+                .isInstanceOf(ImpureTransactionException.class);
+
+        assertThat(orderService.recordedOrders())
+                .as("the outer transaction must not roll back around a committed inner one")
+                .isEqualTo(2);
+        assertThat(engine.store().all()).extracting(violation -> violation.transaction().displayName())
+                .as("both were too long, the inner one first; the outer waited for it")
+                .containsExactly("InventoryService.recordAndLingerInNewTransaction",
+                        "OrderService.recordThenLingerInNewTransaction");
     }
 }

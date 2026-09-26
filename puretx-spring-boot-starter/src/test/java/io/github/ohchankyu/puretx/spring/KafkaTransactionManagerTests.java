@@ -19,6 +19,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.transaction.KafkaTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -61,6 +62,30 @@ class KafkaTransactionManagerTests {
                 .containsExactly(ViolationType.HTTP_CALL, ViolationType.LONG_TRANSACTION);
         assertThat(summaries).singleElement().satisfies(summary ->
                 assertThat(summary.transactionMillis()).isGreaterThanOrEqualTo(120));
+    }
+
+    @Test
+    @DisplayName("a suspended Kafka transaction is not reported, even with open-in-view holding a resource")
+    void staysQuietWhileSuspendedDespiteUnrelatedResources() {
+        final PuretxEngine engine = engine(Duration.ofSeconds(3));
+        final KafkaTransactionManager<String, String> manager = instrumented(engine);
+        final TransactionTemplate kafka = new TransactionTemplate(manager);
+        final TransactionTemplate suspended = new TransactionTemplate(manager);
+        suspended.setPropagationBehavior(TransactionDefinition.PROPAGATION_NOT_SUPPORTED);
+        final Object entityManagerFactoryStandIn = new Object();
+        TransactionSynchronizationManager.bindResource(entityManagerFactoryStandIn, new Object());
+        try {
+            kafka.executeWithoutResult(status -> {
+                suspended.executeWithoutResult(inner ->
+                        engine.report(ViolationType.HTTP_CALL, () -> "HTTP GET https://example.com/suspended"));
+                engine.report(ViolationType.HTTP_CALL, () -> "HTTP GET https://example.com/resumed");
+            });
+        } finally {
+            TransactionSynchronizationManager.unbindResource(entityManagerFactoryStandIn);
+        }
+
+        assertThat(engine.store().all()).extracting(Violation::summary)
+                .containsExactly("HTTP GET https://example.com/resumed");
     }
 
     @Test

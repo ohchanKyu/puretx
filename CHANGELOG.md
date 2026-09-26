@@ -7,6 +7,26 @@ change the API.
 
 ## [Unreleased]
 
+### Fixed
+
+- `KafkaTemplate.executeInTransaction` inside a database transaction is reported again. rc3
+  exempted any producer that had seen `beginTransaction`, which also covered this local Kafka
+  transaction that commits before the database does. The exemption now also requires the
+  `KafkaResourceHolder` Spring binds when it ties a Kafka transaction to its own.
+- A suspended Kafka transaction (`NOT_SUPPORTED` inside `KafkaTransactionManager`) is no longer
+  reported when open-in-view keeps an entity manager bound. The probe now checks the manager's
+  own resource key rather than whether any resource is bound.
+- In `FAIL` mode, a slow inner `REQUIRES_NEW` transaction no longer rolls the outer transaction
+  back around the committed inner one. The failure waits until the outermost transaction has
+  committed, then surfaces.
+- `ImpureTransactionException`'s message includes the call path.
+- The startup warning about a missing transaction manager still lists what was instrumented.
+
+### Changed
+
+- `PuretxEngine.reportLongTransaction(TransactionInfo, long)` records and returns the violation
+  instead of throwing; the framework hook decides whether the caller should fail.
+
 ## [0.1.0-rc4] - 2026-09-26
 
 ### Fixed

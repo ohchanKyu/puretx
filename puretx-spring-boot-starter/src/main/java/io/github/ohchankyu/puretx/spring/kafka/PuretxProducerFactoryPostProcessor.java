@@ -42,7 +42,7 @@ public final class PuretxProducerFactoryPostProcessor implements BeanPostProcess
         if (factory.getPostProcessors().stream().anyMatch(PuretxProducerPostProcessor.class::isInstance)) {
             return bean;
         }
-        final PuretxProducerPostProcessor added = new PuretxProducerPostProcessor(engineSupplier, factory);
+        final PuretxProducerPostProcessor added = new PuretxProducerPostProcessor(engineSupplier);
         ((ProducerFactory) factory).addPostProcessor(added);
 
         if (!factory.getPostProcessors().contains(added)) {
@@ -60,16 +60,13 @@ public final class PuretxProducerFactoryPostProcessor implements BeanPostProcess
 
         private final Supplier<PuretxEngine> engineSupplier;
 
-        private final ProducerFactory<?, ?> factory;
-
-        PuretxProducerPostProcessor(final Supplier<PuretxEngine> engineSupplier, final ProducerFactory<?, ?> factory) {
+        PuretxProducerPostProcessor(final Supplier<PuretxEngine> engineSupplier) {
             this.engineSupplier = engineSupplier;
-            this.factory = factory;
         }
 
         @Override
         public Producer<Object, Object> apply(final Producer<Object, Object> producer) {
-            return PuretxProducerProxy.wrap(producer, engineSupplier.get(), factory);
+            return PuretxProducerProxy.wrap(producer, engineSupplier.get());
         }
     }
 }

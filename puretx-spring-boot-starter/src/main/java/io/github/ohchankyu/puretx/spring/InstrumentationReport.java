@@ -81,9 +81,10 @@ public final class InstrumentationReport implements SmartInitializingSingleton {
                 .collect(Collectors.joining(", "));
 
         if (count(TRANSACTION_MANAGER) == 0) {
-            log.warn("[puretx] no transaction manager was instrumented, so no transaction is visible "
+            log.warn("[puretx] instrumented {}, but no transaction manager, so no transaction is visible "
                     + "and nothing will ever be reported. Only an AbstractPlatformTransactionManager "
-                    + "can be instrumented; reactive transaction managers cannot.");
+                    + "can be instrumented; reactive transaction managers cannot.",
+                    tally.isEmpty() ? "nothing" : tally);
             return;
         }
         if (watchingHttp && HTTP_KINDS.stream().mapToLong(this::count).sum() == 0) {
