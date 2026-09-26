@@ -142,6 +142,13 @@ public class OrderService {
         sleep(millis);
     }
 
+    /** An outer write, then an inner REQUIRES_NEW transaction that is the slow one. */
+    @Transactional
+    public void recordThenLingerInNewTransaction(final long millis) {
+        record();
+        inventoryService.recordAndLingerInNewTransaction(millis);
+    }
+
     public int recordedOrders() {
         return jdbcTemplate.queryForObject("select count(*) from recorded_orders", Integer.class);
     }

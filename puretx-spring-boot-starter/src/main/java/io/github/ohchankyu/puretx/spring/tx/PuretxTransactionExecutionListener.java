@@ -1,9 +1,15 @@
 package io.github.ohchankyu.puretx.spring.tx;
 
+import io.github.ohchankyu.puretx.ImpureTransactionException;
+import io.github.ohchankyu.puretx.Puretx;
 import io.github.ohchankyu.puretx.PuretxEngine;
+import io.github.ohchankyu.puretx.PuretxMode;
 import io.github.ohchankyu.puretx.TransactionSummary;
+import io.github.ohchankyu.puretx.Violation;
 import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.transaction.TransactionExecution;
 import org.springframework.transaction.TransactionExecutionListener;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -27,19 +33,34 @@ import org.springframework.util.function.SingletonSupplier;
  *
  * <p>In {@code FAIL} mode a transaction held too long throws from {@link #afterCommit}. Spring
  * propagates that to the caller with the transaction already committed: the test fails and the
- * data stays, because there is nothing left to abort by then.
+ * data stays, because there is nothing left to abort by then. When that transaction was an inner
+ * one — {@code REQUIRES_NEW} — throwing there would reach the outer method and roll the outer
+ * transaction back while the inner stays committed, a half-written state that no test wants.
+ * So an inner failure is handed to the enclosing scope and thrown once the outermost transaction
+ * has committed too.
  *
  * <p>One instance exists per transaction manager, so a violation can say which one was in charge.
  */
 public final class PuretxTransactionExecutionListener implements TransactionExecutionListener {
 
+    private static final Logger log = LoggerFactory.getLogger(Puretx.LOGGER_NAME);
+
     private final Supplier<PuretxEngine> engineSupplier;
 
     private final String managerType;
 
-    public PuretxTransactionExecutionListener(final Supplier<PuretxEngine> engineSupplier, final String managerType) {
+    private final Supplier<@Nullable Object> resourceKey;
+
+    /**
+     * @param resourceKey what the manager binds to the thread for the length of a transaction,
+     *                    or {@code null} when it binds nothing; asked for at each begin, because
+     *                    a manager may not know it before its own initialisation has finished
+     */
+    public PuretxTransactionExecutionListener(final Supplier<PuretxEngine> engineSupplier, final String managerType,
+            final Supplier<@Nullable Object> resourceKey) {
         this.engineSupplier = SingletonSupplier.of(engineSupplier);
         this.managerType = managerType;
+        this.resourceKey = resourceKey;
     }
 
     @Override
@@ -56,7 +77,8 @@ public final class PuretxTransactionExecutionListener implements TransactionExec
                 transaction.getTransactionName(),
                 transaction.isReadOnly(),
                 TestTransactionDetector.isTestManaged(),
-                managerType);
+                managerType,
+                resourceKey.get());
         TransactionScopeManager.push(scope);
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new PuretxTransactionSynchronization(scope));
@@ -90,6 +112,11 @@ public final class PuretxTransactionExecutionListener implements TransactionExec
         }
         final TransactionScope scope = TransactionScopeManager.current();
         if (scope == null || scope.execution() != transaction || scope.isCompleted()) {
+            if (log.isDebugEnabled()) {
+                log.debug("[puretx] {} ended a transaction that is not the innermost one puretx knows about; "
+                        + "it will not be timed or summarised. Two transaction managers driven by hand and "
+                        + "completed out of order look like this.", managerType);
+            }
             return;
         }
         scope.markCompleted();
@@ -97,7 +124,16 @@ public final class PuretxTransactionExecutionListener implements TransactionExec
         TransactionScopeManager.pop(scope);
         final PuretxEngine engine = engineSupplier.get();
         try {
-            engine.reportLongTransaction(scope.snapshot(), scope.heldMillis(), quiet);
+            final Violation own = engine.reportLongTransaction(scope.snapshot(), scope.heldMillis());
+            final Violation failure = own != null ? own : scope.deferredFailure();
+            if (failure != null && !quiet && engine.settings().mode() == PuretxMode.FAIL) {
+                final TransactionScope outer = TransactionScopeManager.current();
+                if (outer != null) {
+                    outer.deferFailure(failure);
+                } else {
+                    throw new ImpureTransactionException(failure);
+                }
+            }
         } finally {
             final TransactionSummary summary = scope.summarise();
             if (summary != null) {
