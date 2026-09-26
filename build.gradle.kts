@@ -64,8 +64,9 @@ subprojects {
 }
 
 // Everything a Maven Central release needs, wired so that it costs nothing until it is used:
-//   ./gradlew publishToMavenLocal          works with no keys, for JitPack and for trying it out
+//   ./gradlew publishToMavenLocal          works with no keys, for trying it out
 //   SIGNING_KEY / SIGNING_PASSWORD set     signs the artifacts, which Central requires
+//   nmcpPublishAggregationToCentralPortal  uploads the signed publications (settings.gradle.kts)
 // Versions come from gradle.properties; a release overrides it with -Pversion=<tag without v>.
 configure(subprojects.filter { it.name != "puretx-sample" }) {
     apply(plugin = "maven-publish")
