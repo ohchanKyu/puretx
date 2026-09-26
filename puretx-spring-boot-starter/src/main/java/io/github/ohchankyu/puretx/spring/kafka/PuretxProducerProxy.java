@@ -22,10 +22,15 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * <p>Publishing inside a Kafka-managed transaction is not a violation and is not reported: that is
  * the transactional producer working as designed. That includes a transactional
  * {@code KafkaTemplate} used inside a database transaction, which Spring Kafka joins to it and
- * commits after the database commit; the producer factory is bound to the transaction either
- * way, and that binding is what this checks. Only a non-transactional producer inside somebody
- * else's transaction — a database one, typically — is the problem, because a rollback there
- * cannot unsend the message.
+ * commits after the database commit. Only a non-transactional producer inside somebody else's
+ * transaction — a database one, typically — is the problem, because a rollback there cannot
+ * unsend the message.
+ *
+ * <p>Whether the producer is in a Kafka transaction is read off the producer itself: it saw
+ * {@code beginTransaction} and has not yet seen the commit or abort. Asking the transaction
+ * manager which factory is bound is not reliable, because {@code new KafkaTemplate(factory,
+ * overrides)} copies the factory and binds the copy, while the post-processor that made this
+ * proxy only knows the original. The producer knows, whichever factory made it.
  */
 final class PuretxProducerProxy implements InvocationHandler {
 
@@ -34,6 +39,9 @@ final class PuretxProducerProxy implements InvocationHandler {
     private final PuretxEngine engine;
 
     private final Object producerFactory;
+
+    /** A transactional producer is driven by one thread at a time, but not always the same one. */
+    private volatile boolean inTransaction;
 
     private PuretxProducerProxy(final Producer<?, ?> target, final PuretxEngine engine, final Object producerFactory) {
         this.target = target;
@@ -51,12 +59,26 @@ final class PuretxProducerProxy implements InvocationHandler {
 
     @Override
     public @Nullable Object invoke(final Object proxy, final Method method, final Object @Nullable [] args) throws Throwable {
-        if ("send".equals(method.getName())
-                && args != null
-                && args.length > 0
-                && args[0] instanceof ProducerRecord<?, ?> record
-        ) {
-            return send(method, args, record);
+        switch (method.getName()) {
+            case "send" -> {
+                if (args != null && args.length > 0 && args[0] instanceof ProducerRecord<?, ?> record) {
+                    return send(method, args, record);
+                }
+            }
+            case "beginTransaction" -> {
+                final Object result = invokeTarget(method, args);
+                inTransaction = true;
+                return result;
+            }
+            case "commitTransaction", "abortTransaction" -> {
+                try {
+                    return invokeTarget(method, args);
+                } finally {
+                    inTransaction = false;
+                }
+            }
+            default -> {
+            }
         }
         return invokeTarget(method, args);
     }
@@ -92,15 +114,19 @@ final class PuretxProducerProxy implements InvocationHandler {
     }
 
     private @Nullable Detection detect(final ProducerRecord<?, ?> record) {
-        if (!engine.isWatching(ViolationType.MESSAGE_PUBLISH) || isKafkaManagedTransaction()) {
+        if (!engine.isWatching(ViolationType.MESSAGE_PUBLISH) || inTransaction || isBoundToTransaction()) {
             return null;
         }
         return engine.start(ViolationType.MESSAGE_PUBLISH,
                 () -> "Kafka send -> topic '" + record.topic() + "'");
     }
 
-    /** True when Spring has bound this producer to the current transaction, i.e. it is a Kafka transaction. */
-    private boolean isKafkaManagedTransaction() {
+    /**
+     * True when Spring has bound the factory this proxy was made for to the current transaction.
+     * Kept alongside the producer's own state for the producer it does not cover: one handed to
+     * Spring already inside a transaction it began elsewhere.
+     */
+    private boolean isBoundToTransaction() {
         return TransactionSynchronizationManager.getResource(producerFactory) != null;
     }
 }
