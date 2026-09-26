@@ -2,9 +2,11 @@
 
 puretx observes transactions and outbound calls inside one JVM. It opens no ports, makes no
 network calls of its own, and stores nothing outside process memory. Its attack surface is what
-it logs: a violation report contains the transaction name, the request method and URL, and
-application stack frames. Query strings are part of the URL, so a secret passed as a query
-parameter would reach the log. Do not pass secrets in query strings; that advice predates puretx.
+it logs: a violation report contains the transaction name, the request method, the scheme, host,
+port and path of the URL, and application stack frames. The query string, user info and fragment
+are dropped before the report is built, so a token passed as a query parameter does not reach the
+log, the violation store or the `FAIL` exception message. Request bodies and headers are never
+read.
 
 ## Reporting a vulnerability
 

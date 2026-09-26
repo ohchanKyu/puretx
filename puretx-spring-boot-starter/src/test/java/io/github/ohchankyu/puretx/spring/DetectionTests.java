@@ -51,6 +51,17 @@ class DetectionTests {
     }
 
     @Test
+    @DisplayName("a token in the query string stays out of the report")
+    void keepsTheQueryStringOutOfTheReport() {
+        orderService.createOrder(server.url("/charge?access_token=SECRET-TOKEN-123&user=me"));
+
+        assertThat(engine.store().all()).singleElement().satisfies(violation -> {
+            assertThat(violation.summary()).isEqualTo("HTTP GET " + server.url("/charge"));
+            assertThat(violation.toString()).doesNotContain("SECRET-TOKEN-123");
+        });
+    }
+
+    @Test
     @DisplayName("the call site is the frame that made the call, not the framework that carried it")
     void reportsTheApplicationCallSite() {
         orderService.createOrder(server.url());

@@ -7,6 +7,19 @@ change the API.
 
 ## [Unreleased]
 
+### Fixed
+
+- An HTTP call is timed until its response body has been read, not until the status arrives.
+  With Boot's default non-buffering request factories a 500ms download read as 5ms and the
+  summary called it 1% of the transaction. `RestTemplate` and `RestClient` responses are
+  wrapped and finish on close or end of body; `WebClient` finishes when the body terminates.
+
+### Changed
+
+- The URL in a report is scheme, host, port and path. The query string, user info and fragment
+  are dropped before the report is built, so a token passed as a query parameter no longer
+  reaches the log, the violation store or the `FAIL` exception message.
+
 ## [0.1.0-rc6] - 2026-09-26
 
 ### Fixed

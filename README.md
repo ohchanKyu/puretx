@@ -94,7 +94,14 @@ The transaction line comes first on purpose. "You made an HTTP call" is easy to 
 an HTTP call 15ms into a transaction, and it took 431ms" is the sentence that gets it fixed.
 
 The `path` is application frames only — the chain of your own code that led to the call, even when
-the call itself happens several library frames deeper.
+the call itself happens several library frames deeper. The URL is scheme, host, port and path;
+the query string is dropped before the report is built, because that is where tokens travel and
+this line goes to your log.
+
+A call is timed until the response body has been read, not until the status arrives. With a
+non-buffering request factory, Boot's default, the download is the call as far as the
+connection is concerned. `WebClient` is timed until the body it was asked for terminates; a body
+that is never consumed nor released is never timed, and is a leaked connection besides.
 
 ### Is it actually on?
 
