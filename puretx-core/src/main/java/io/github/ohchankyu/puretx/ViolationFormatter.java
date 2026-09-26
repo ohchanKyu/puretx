@@ -31,7 +31,15 @@ public final class ViolationFormatter {
         return sb.toString();
     }
 
-    /** The one-line summary of everything a transaction spent its life on. */
+    /**
+     * The one-line summary of everything a transaction spent its life on.
+     *
+     * <p>Two shapes. With timed calls: {@code held a transaction open for 448ms — 431ms of it
+     * (96%) waiting on 1 external call}. When no call carried a duration, because the detector
+     * only had a hook before the call: {@code held a transaction open for 448ms, with 1 external
+     * call inside it}. The second deliberately does not say 0%, which would read as "nothing to
+     * see here" for a call that was never measured.
+     */
     public static String format(final TransactionSummary summary) {
         final String calls = summary.callCount() + (summary.callCount() == 1 ? " external call" : " external calls");
         if (summary.callMillis() <= 0) {

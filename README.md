@@ -68,6 +68,11 @@ One line per transaction, saying where its life went:
 [puretx] OrderService.createOrder held a transaction open for 448ms — 431ms of it (96%) waiting on 1 external call
 ```
 
+When none of the calls could be timed — Feign and RabbitMQ only offer a hook before the call —
+the line says `with 1 external call inside it` and leaves the share out rather than claiming
+zero. Anything reading these programmatically should not parse the log at all: a
+`ViolationListener` gets the same numbers as a `TransactionSummary`.
+
 That share is the number nothing else can give you. A trace shows a slow request; a connection-pool
 warning shows a symptom. This says how much of one transaction's life was spent outside the
 database — and above it, exactly which call and which line of your code:
@@ -220,6 +225,9 @@ those tests were written before the detection was:
 - Calls with no transaction open at all.
 - `REQUIRES_NEW`: the inner transaction is tracked separately, and the outer one resumes afterwards.
 - Publishing inside a Kafka-managed transaction — that is the transactional producer working as designed.
+- A transactional `KafkaTemplate` used inside a database transaction. Spring Kafka joins it to
+  that transaction and commits the Kafka side after the database commits, so a rollback takes
+  the message back. Only a non-transactional producer inside a database transaction is reported.
 - Publishing on a transacted `RabbitTemplate` channel synchronised with the transaction — the
   channel commits after the database does, so a rollback takes the message back.
 - Transactions opened by Spring's TestContext framework around a `@Transactional` test.
