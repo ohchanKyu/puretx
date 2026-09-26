@@ -7,11 +7,15 @@ import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import io.github.ohchankyu.puretx.Puretx;
+import io.github.ohchankyu.puretx.PuretxEngine;
+import io.github.ohchankyu.puretx.spring.http.PuretxClientHttpRequestInterceptor;
+import io.github.ohchankyu.puretx.spring.http.PuretxRestTemplatePostProcessor;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
+import org.springframework.web.client.RestTemplate;
 
 /**
  * The report exists so that "nothing to report" is distinguishable from "attached to nothing".
@@ -123,6 +127,26 @@ class InstrumentationReportTests {
             assertThat(event.getLevel()).isEqualTo(Level.WARN);
             assertThat(event.getFormattedMessage()).contains("no transaction manager");
         });
+    }
+
+    @Test
+    @DisplayName("a template from the builder is counted once, by the builder, not again by the post-processor")
+    void countsABuilderMadeTemplateOnce() {
+        final List<ILoggingEvent> events = capture();
+        final InstrumentationReport report = new InstrumentationReport();
+        final PuretxClientHttpRequestInterceptor interceptor =
+                new PuretxClientHttpRequestInterceptor(PuretxEngine.disabled());
+        final RestTemplate template = new RestTemplate();
+        interceptor.installOn(template, report);
+        report.instrumented("transaction manager");
+
+        new PuretxRestTemplatePostProcessor(PuretxEngine::disabled, report)
+                .postProcessAfterInitialization(template, "restTemplate");
+        report.afterSingletonsInstantiated();
+
+        assertThat(events).singleElement().satisfies(event ->
+                assertThat(event.getFormattedMessage())
+                        .isEqualTo("[puretx] instrumented 1 RestTemplate.Builder, 1 transaction manager"));
     }
 
     private static List<ILoggingEvent> capture() {

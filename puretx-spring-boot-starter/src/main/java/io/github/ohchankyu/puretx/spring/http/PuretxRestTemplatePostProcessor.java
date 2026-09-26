@@ -13,7 +13,8 @@ import org.springframework.web.client.RestTemplate;
  *
  * <p>Templates that came from the builder already have it, courtesy of the
  * {@code RestTemplateCustomizer}, so {@link PuretxClientHttpRequestInterceptor#installOn} checks
- * before adding.
+ * before adding, and only a template this actually attached to is counted here. The builder
+ * already counted the other kind; counting it again made one bean look like two.
  */
 public final class PuretxRestTemplatePostProcessor implements BeanPostProcessor {
 
@@ -30,8 +31,7 @@ public final class PuretxRestTemplatePostProcessor implements BeanPostProcessor 
 
     @Override
     public Object postProcessAfterInitialization(final Object bean, final String beanName) throws BeansException {
-        if (bean instanceof RestTemplate restTemplate) {
-            interceptor.installOn(restTemplate);
+        if (bean instanceof RestTemplate restTemplate && interceptor.installOn(restTemplate)) {
             report.instrumented("RestTemplate", () -> restTemplate.getInterceptors().stream()
                     .anyMatch(PuretxClientHttpRequestInterceptor.class::isInstance));
         }
