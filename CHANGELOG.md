@@ -7,6 +7,8 @@ change the API.
 
 ## [Unreleased]
 
+## [0.1.0-rc4] - 2026-09-26
+
 ### Fixed
 
 - A `RestTemplate` or `RestClient` call is timed until the response status arrives. With the
@@ -77,7 +79,8 @@ First tagged version, served from JitPack.
 - `Automatic-Module-Name` in both jars: `io.github.ohchankyu.puretx` and
   `io.github.ohchankyu.puretx.spring`.
 
-[Unreleased]: https://github.com/ohchanKyu/puretx/compare/v0.1.0-rc3...HEAD
+[Unreleased]: https://github.com/ohchanKyu/puretx/compare/v0.1.0-rc4...HEAD
+[0.1.0-rc4]: https://github.com/ohchanKyu/puretx/compare/v0.1.0-rc3...v0.1.0-rc4
 [0.1.0-rc3]: https://github.com/ohchanKyu/puretx/compare/v0.1.0-rc2...v0.1.0-rc3
 [0.1.0-rc2]: https://github.com/ohchanKyu/puretx/compare/v0.1.0-rc1...v0.1.0-rc2
 [0.1.0-rc1]: https://github.com/ohchanKyu/puretx/releases/tag/v0.1.0-rc1
