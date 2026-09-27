@@ -7,6 +7,8 @@ change the API.
 
 ## [Unreleased]
 
+## [0.1.0-rc8] - 2026-09-27
+
 ### Fixed
 
 - `puretx.app-packages` entries are package prefixes. `com.acme.*` used to be read as a pattern
@@ -143,7 +145,8 @@ First tagged version, served from JitPack.
 - `Automatic-Module-Name` in both jars: `io.github.ohchankyu.puretx` and
   `io.github.ohchankyu.puretx.spring`.
 
-[Unreleased]: https://github.com/ohchanKyu/puretx/compare/v0.1.0-rc7...HEAD
+[Unreleased]: https://github.com/ohchanKyu/puretx/compare/v0.1.0-rc8...HEAD
+[0.1.0-rc8]: https://github.com/ohchanKyu/puretx/compare/v0.1.0-rc7...v0.1.0-rc8
 [0.1.0-rc7]: https://github.com/ohchanKyu/puretx/compare/v0.1.0-rc6...v0.1.0-rc7
 [0.1.0-rc6]: https://github.com/ohchanKyu/puretx/compare/v0.1.0-rc5...v0.1.0-rc6
 [0.1.0-rc5]: https://github.com/ohchanKyu/puretx/compare/v0.1.0-rc4...v0.1.0-rc5
