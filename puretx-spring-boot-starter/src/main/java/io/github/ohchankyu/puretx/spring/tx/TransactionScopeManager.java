@@ -6,6 +6,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * The per-thread stack of open transaction scopes.
@@ -42,15 +43,22 @@ public final class TransactionScopeManager {
     }
 
     /**
-     * The engine that opened the innermost transaction on this thread, or {@code null}.
+     * The engine that opened the innermost transaction on this thread; a disabled engine when the
+     * thread is in a Spring transaction puretx did not see begin; {@code null} outside any.
      *
      * <p>What {@code Puretx.watch} and {@code Puretx.violations()} resolve through, so that inside
      * a transaction they use the engine of the context that owns it rather than whichever
-     * context started last.
+     * context started last. A transaction with no scope was opened by a manager puretx did not
+     * instrument — a context with {@code puretx.enabled=false}, most likely, sharing the JVM
+     * with one that is on. Falling back to the static engine there would report that context's
+     * calls into another context's store, so it falls back to nothing instead.
      */
     public static @Nullable PuretxEngine currentEngine() {
         final TransactionScope scope = current();
-        return scope == null || scope.isFinished() ? null : scope.engine();
+        if (scope != null && !scope.isFinished()) {
+            return scope.engine();
+        }
+        return TransactionSynchronizationManager.isActualTransactionActive() ? PuretxEngine.disabled() : null;
     }
 
     static void pop(final TransactionScope scope) {

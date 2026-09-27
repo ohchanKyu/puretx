@@ -113,6 +113,26 @@ class KafkaTransactionManagerTests {
     }
 
     @Test
+    @DisplayName("inside a transaction puretx did not see begin, watch reports nowhere rather than into another context")
+    void watchIsOffInsideAnUninstrumentedTransaction() {
+        final PuretxEngine otherContext = new PuretxEngine(
+                PuretxSettings.builder().mode(PuretxMode.FAIL).build(), new SpringTransactionProbe());
+        final KafkaTransactionManager<String, String> uninstrumented = new KafkaTransactionManager<>(new FakeProducerFactory());
+        uninstrumented.setTransactionSynchronization(KafkaTransactionManager.SYNCHRONIZATION_ALWAYS);
+        Puretx.setEngine(otherContext);
+        Puretx.setScopedEngine(TransactionScopeManager::currentEngine);
+        try {
+            new TransactionTemplate(uninstrumented).executeWithoutResult(status ->
+                    assertThat(Puretx.watch("Slack chat.postMessage", () -> "sent")).isEqualTo("sent"));
+        } finally {
+            Puretx.setScopedEngine(null);
+            Puretx.setEngine(null);
+        }
+
+        assertThat(otherContext.store().all()).isEmpty();
+    }
+
+    @Test
     @DisplayName("once the Kafka transaction is over, the thread is clean")
     void leavesNothingBehind() {
         final PuretxEngine engine = engine(Duration.ofSeconds(3));
