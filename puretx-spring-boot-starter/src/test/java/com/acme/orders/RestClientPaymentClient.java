@@ -16,4 +16,9 @@ public class RestClientPaymentClient {
     public String charge(final String url) {
         return restClient.get().uri(url).retrieve().body(String.class);
     }
+
+    /** Takes the raw response and walks away without closing it: a leak, and still a call. */
+    public String chargeAndForgetTheResponse(final String url) {
+        return restClient.get().uri(url).exchange((request, response) -> "forgotten", false);
+    }
 }

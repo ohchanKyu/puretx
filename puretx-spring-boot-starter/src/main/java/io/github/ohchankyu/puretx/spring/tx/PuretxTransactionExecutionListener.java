@@ -102,8 +102,11 @@ public final class PuretxTransactionExecutionListener implements TransactionExec
      * Drops the scope, reports the transaction's length, then summarises it.
      *
      * <p>The scope comes off the stack first, so that an exception from the duration report
-     * leaves nothing behind. The summary goes out even then: it explains violations already
-     * reported, and a test that is failing anyway still deserves the number.
+     * leaves nothing behind. Detections still waiting on their caller — a response never
+     * closed — are finished next, with the transaction's end as their end, so they are counted
+     * before the summary is made. The summary goes out even if the duration report throws: it
+     * explains violations already reported, and a test that is failing anyway still deserves
+     * the number.
      *
      * @param quiet do not throw in {@code FAIL} mode: a rollback, or a commit that failed, has an
      *              exception of its own on the way to the caller
@@ -124,6 +127,7 @@ public final class PuretxTransactionExecutionListener implements TransactionExec
         scope.markCompleted();
         scope.markEnded();
         TransactionScopeManager.pop(scope);
+        scope.finishPending();
         final PuretxEngine engine = engineSupplier.get();
         try {
             final Violation own = engine.reportLongTransaction(scope.snapshot(), scope.heldMillis());

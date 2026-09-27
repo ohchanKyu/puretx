@@ -7,6 +7,16 @@ change the API.
 
 ## [Unreleased]
 
+### Fixed
+
+- An HTTP response the caller never closes — `RestClient.exchange(fn, false)` and no `close()`,
+  a `WebClient` body never consumed — no longer loses its violation. The detection is finished
+  when the transaction ends, timed up to then.
+- `Puretx.watch` inside a transaction opened by a hand-built manager on the context's own data
+  source or producer factory reports into this context again. rc8 silenced every transaction
+  puretx had not seen begin; now only one on another context's resources is silenced, which is
+  what a `puretx.enabled=false` neighbour looks like.
+
 ## [0.1.0-rc8] - 2026-09-27
 
 ### Fixed

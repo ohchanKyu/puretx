@@ -100,8 +100,9 @@ this line goes to your log.
 
 A call is timed until the response body has been read, not until the status arrives. With a
 non-buffering request factory, Boot's default, the download is the call as far as the
-connection is concerned. `WebClient` is timed until the body it was asked for terminates; a body
-that is never consumed nor released is never timed, and is a leaked connection besides.
+connection is concerned. `WebClient` is timed until the body it was asked for terminates. A
+response the caller never closes nor reads to the end is reported when the transaction ends,
+timed up to then; that caller is leaking a connection besides.
 
 ### Is it actually on?
 
@@ -276,8 +277,10 @@ assertThat(Puretx.violations()).isEmpty();
 
 `Puretx.violations()` reads the last engine a Spring context installed, and a suite with cached
 contexts keeps several alive at once. Inside a transaction, `Puretx.watch` and `Puretx.suppress`
-already use the engine of the context that opened it, so application code is safe, and in a
-context with `puretx.enabled=false` they do nothing rather than report into a neighbour. An
+already use the engine of the context that opened it, so application code is safe. A transaction
+puretx did not see begin — one opened by a manager built by hand rather than a bean — is
+reported here if it runs on this context's data source or producer factory, and nowhere if it
+does not, which is what a transaction from a context with `puretx.enabled=false` looks like. An
 assertion made after the transaction is not safe, because only the static engine is left.
 Inject the engine instead — it is always the one belonging to the context under test:
 

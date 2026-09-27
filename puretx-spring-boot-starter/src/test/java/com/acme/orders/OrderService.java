@@ -48,6 +48,13 @@ public class OrderService {
         paymentClient.chargeByPost(url);
     }
 
+    /** A response the caller never closes. The call still happened inside the transaction. */
+    @Transactional
+    public void createOrderForgettingTheResponse(final String url) {
+        save();
+        restClientPaymentClient.chargeAndForgetTheResponse(url);
+    }
+
     /** RestClient inside the transaction. Same problem, newer API. */
     @Transactional
     public void createOrderWithRestClient(final String url) {

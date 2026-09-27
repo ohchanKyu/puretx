@@ -1,11 +1,8 @@
 package io.github.ohchankyu.puretx.spring.http;
 
-import io.github.ohchankyu.puretx.Detection;
-import io.github.ohchankyu.puretx.PuretxEngine;
 import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.client.ClientHttpResponse;
@@ -21,22 +18,18 @@ import org.springframework.http.client.ClientHttpResponse;
  * every Spring client does once it has extracted the body, or when the body has been read to its
  * end, whichever comes first.
  *
- * <p>A caller that takes the raw response and never closes it also never finishes the detection.
- * That caller is leaking a connection, which is the larger problem; puretx does not guess.
+ * <p>A caller that takes the raw response and never closes it is leaking a connection, which is
+ * the larger problem, but the call still happened inside the transaction and is still reported:
+ * the detection is finished when the transaction ends, timed up to then.
  */
 final class TimedResponse implements ClientHttpResponse {
 
     private final ClientHttpResponse delegate;
 
-    private final PuretxEngine engine;
+    private final PendingDetection detection;
 
-    private final Detection detection;
-
-    private final AtomicBoolean finished = new AtomicBoolean();
-
-    TimedResponse(final ClientHttpResponse delegate, final PuretxEngine engine, final Detection detection) {
+    TimedResponse(final ClientHttpResponse delegate, final PendingDetection detection) {
         this.delegate = delegate;
-        this.engine = engine;
         this.detection = detection;
     }
 
@@ -96,8 +89,6 @@ final class TimedResponse implements ClientHttpResponse {
     }
 
     void finish() {
-        if (finished.compareAndSet(false, true)) {
-            engine.finish(detection);
-        }
+        detection.finish();
     }
 }
