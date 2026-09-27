@@ -64,6 +64,18 @@ class ResponseBodyTimingTests {
     }
 
     @Test
+    @DisplayName("a response the caller never closes is still reported, when the transaction ends")
+    void unclosedResponseIsReportedAtTransactionEnd() {
+        orderService.createOrderForgettingTheResponse(server.url());
+
+        assertThat(engine.store().all()).singleElement().satisfies(violation -> {
+            assertThat(violation.summary()).startsWith("HTTP GET");
+            assertThat(violation.transaction().displayName()).isEqualTo("OrderService.createOrderForgettingTheResponse");
+            assertThat(violation.hasDuration()).isTrue();
+        });
+    }
+
+    @Test
     @DisplayName("WebClient is timed to the end of the body it was asked for")
     void webClientIncludesTheBody() {
         orderService.createOrderWithWebClient(server.url());

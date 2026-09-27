@@ -4,6 +4,8 @@ import io.github.ohchankyu.puretx.PuretxEngine;
 import io.github.ohchankyu.puretx.TransactionInfo;
 import io.github.ohchankyu.puretx.TransactionSummary;
 import io.github.ohchankyu.puretx.Violation;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -68,6 +70,14 @@ public final class TransactionScope {
 
     private final AtomicBoolean summaryReported = new AtomicBoolean();
 
+    /**
+     * Detections whose end has not arrived: a response the caller has not closed yet, a body
+     * not yet read to its end. Finished when the transaction ends if the caller never gets
+     * there, so that a call which happened inside the transaction is reported whatever the
+     * caller does with its response afterwards.
+     */
+    private final Set<Pending> pending = ConcurrentHashMap.newKeySet();
+
     private volatile boolean ended;
 
     private volatile long endedMillis = -1;
@@ -115,6 +125,27 @@ public final class TransactionScope {
 
     public TransactionExecution execution() {
         return execution;
+    }
+
+    /** Something that is timing an operation and will finish it once the caller is done. */
+    public interface Pending {
+        void finish();
+    }
+
+    public void registerPending(final Pending detection) {
+        pending.add(detection);
+    }
+
+    public void unregisterPending(final Pending detection) {
+        pending.remove(detection);
+    }
+
+    /** Finishes every detection still waiting on its caller, with the transaction as the deadline. */
+    void finishPending() {
+        for (final Pending detection : pending) {
+            detection.finish();
+        }
+        pending.clear();
     }
 
     public PuretxEngine engine() {

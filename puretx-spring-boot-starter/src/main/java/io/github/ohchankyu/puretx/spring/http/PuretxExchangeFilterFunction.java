@@ -4,7 +4,6 @@ import io.github.ohchankyu.puretx.Detection;
 import io.github.ohchankyu.puretx.PuretxEngine;
 import io.github.ohchankyu.puretx.ViolationType;
 import io.github.ohchankyu.puretx.spring.InstrumentationReport;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 import org.springframework.core.Ordered;
 import org.springframework.util.function.SingletonSupplier;
@@ -30,8 +29,8 @@ import reactor.core.publisher.Mono;
  * violation is <em>recorded</em> when the response body terminates, which is whichever thread
  * the client completes on. Not when the response arrives: the body streams after that, and for
  * a large response the download is most of the call. A blocking caller can therefore return a
- * moment before the report lands. A body that is never consumed nor released never finishes the
- * detection; that caller is leaking the connection, which is the larger problem.
+ * moment before the report lands. A body that is never consumed nor released is finished when
+ * the transaction ends, timed up to then; that caller is leaking the connection besides.
  */
 public final class PuretxExchangeFilterFunction implements ExchangeFilterFunction, Ordered {
 
@@ -79,17 +78,12 @@ public final class PuretxExchangeFilterFunction implements ExchangeFilterFunctio
             if (detection == null) {
                 return next.exchange(request);
             }
-            final AtomicBoolean finished = new AtomicBoolean();
-            final Runnable finish = () -> {
-                if (finished.compareAndSet(false, true)) {
-                    engine.finish(detection);
-                }
-            };
+            final PendingDetection pending = new PendingDetection(engine, detection);
             return next.exchange(request)
-                    .doOnError(error -> finish.run())
-                    .doOnCancel(finish)
+                    .doOnError(error -> pending.finish())
+                    .doOnCancel(pending::finish)
                     .map(response -> response.mutate()
-                            .body(body -> body.doFinally(signal -> finish.run()))
+                            .body(body -> body.doFinally(signal -> pending.finish()))
                             .build());
         });
     }

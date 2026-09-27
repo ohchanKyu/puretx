@@ -97,8 +97,9 @@ public class PuretxAutoConfiguration {
     }
 
     @Bean
-    PuretxFacadeInstaller puretxFacadeInstaller(final PuretxEngine engine) {
-        return new PuretxFacadeInstaller(engine);
+    PuretxFacadeInstaller puretxFacadeInstaller(final PuretxEngine engine,
+            final ObjectProvider<PuretxTransactionManagerPostProcessor> managers) {
+        return new PuretxFacadeInstaller(engine, managers.getIfAvailable());
     }
 
     @Bean

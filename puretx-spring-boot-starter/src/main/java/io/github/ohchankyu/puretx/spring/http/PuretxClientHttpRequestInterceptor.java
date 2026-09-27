@@ -90,7 +90,8 @@ public final class PuretxClientHttpRequestInterceptor implements ClientHttpReque
      * every non-buffering factory returns before the body has been read; both leave the wait
      * that actually held the connection out of the figure. The response is handed back wrapped,
      * and the detection finishes when it is closed or its body read to the end. A request that
-     * fails before there is a response finishes at once.
+     * fails before there is a response finishes at once, and one whose response the caller never
+     * closes finishes when the transaction ends.
      */
     @Override
     public ClientHttpResponse intercept(final HttpRequest request, final byte[] body, final ClientHttpRequestExecution execution) throws IOException {
@@ -99,14 +100,15 @@ public final class PuretxClientHttpRequestInterceptor implements ClientHttpReque
         if (detection == null) {
             return execution.execute(request, body);
         }
+        final PendingDetection pending = new PendingDetection(engine, detection);
         final ClientHttpResponse response;
         try {
             response = execution.execute(request, body);
         } catch (IOException | RuntimeException ex) {
-            engine.finish(detection);
+            pending.finish();
             throw ex;
         }
-        return new TimedResponse(response, engine, detection);
+        return new TimedResponse(response, pending);
     }
 
     /**
