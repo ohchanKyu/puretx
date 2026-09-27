@@ -7,6 +7,18 @@ change the API.
 
 ## [Unreleased]
 
+### Fixed
+
+- `puretx.app-packages` entries are package prefixes. `com.acme.*` used to be read as a pattern
+  matching one segment, so every deeper frame went unrecognised and the report lost its call
+  site and named framework frames instead; it now means everything under `com.acme`. A wildcard
+  anywhere else is still matched as a pattern, and the startup log warns about it.
+- In a context with `puretx.enabled=false` that shares the JVM with an enabled one,
+  `Puretx.watch` inside a transaction no longer reports into the enabled context's store. A
+  transaction puretx did not see begin resolves to no engine.
+- An application that defines its own `PuretxEngine` bean gets the static facade pointed at it;
+  before, `Puretx.watch` there went to whichever engine another context had installed, or none.
+
 ## [0.1.0-rc7] - 2026-09-26
 
 ### Fixed

@@ -228,6 +228,18 @@ class PuretxEngineTests {
     }
 
     @Test
+    @DisplayName("app packages are prefixes: a trailing star is what people write and means everything below")
+    void appPackagesFoldTrailingWildcards() {
+        final PuretxSettings settings = PuretxSettings.builder()
+                .appPackages(List.of("com.acme.*", "com.beta.**", " com.gamma ", "com.delta.*.service"))
+                .build();
+
+        assertThat(settings.appPackages()).containsExactly("com.acme", "com.beta", "com.gamma", "com.delta.*.service");
+        assertThat(settings.hasWildcardAppPackage()).isTrue();
+        assertThat(PuretxSettings.builder().appPackages(List.of("com.acme.*")).build().hasWildcardAppPackage()).isFalse();
+    }
+
+    @Test
     @DisplayName("a switched-off puretx says which switch did it")
     void describesWhyItIsOff() {
         assertThat(PuretxSettings.builder().enabled(false).build().describe())

@@ -84,11 +84,21 @@ public class PuretxAutoConfiguration {
         }
         engine.addListener(TransactionScopeManager.callRecorder(() -> engine));
         listeners.orderedStream().forEach(engine::addListener);
-        Puretx.setEngine(engine);
-        Puretx.setScopedEngine(TransactionScopeManager::currentEngine);
 
         log.info("[puretx] {}", engine.settings().describe());
+        if (engine.settings().hasWildcardAppPackage()) {
+            log.warn("[puretx] puretx.app-packages {} contains a wildcard that is not at the end. It is "
+                    + "matched as a pattern, one segment per star, so frames in deeper packages are not "
+                    + "recognised as application code and the report will name framework frames "
+                    + "instead. List package prefixes: com.acme covers everything below it.",
+                    engine.settings().appPackages());
+        }
         return engine;
+    }
+
+    @Bean
+    PuretxFacadeInstaller puretxFacadeInstaller(final PuretxEngine engine) {
+        return new PuretxFacadeInstaller(engine);
     }
 
     @Bean

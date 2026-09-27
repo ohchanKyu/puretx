@@ -151,6 +151,19 @@ public final class PuretxSettings {
         return durationCheckEnabled;
     }
 
+    static String asPackagePrefix(final String appPackage) {
+        String prefix = appPackage.trim();
+        while (prefix.endsWith(".**") || prefix.endsWith(".*")) {
+            prefix = prefix.substring(0, prefix.lastIndexOf('.'));
+        }
+        return prefix;
+    }
+
+    /** Whether any app package still carries a wildcard after the trailing one was folded away. */
+    public boolean hasWildcardAppPackage() {
+        return appPackages.stream().anyMatch(p -> p.indexOf('*') >= 0 || p.indexOf('?') >= 0);
+    }
+
     public static final class Builder {
 
         private boolean enabled = true;
@@ -184,8 +197,17 @@ public final class PuretxSettings {
             return this;
         }
 
+        /**
+         * Package prefixes, not patterns. {@code com.acme.*} and {@code com.acme.**} both mean
+         * "everything under com.acme" and are stored as {@code com.acme}: a single star means
+         * one segment in an ignore pattern, and treating it that way here left every deeper
+         * frame unrecognised, so the report lost its call site and showed framework frames
+         * instead. A wildcard anywhere else is kept as written and matched as a pattern.
+         */
         public Builder appPackages(final @Nullable List<String> appPackages) {
-            this.appPackages = CollectionUtils.isEmpty(appPackages) ? List.of() : appPackages;
+            this.appPackages = CollectionUtils.isEmpty(appPackages)
+                    ? List.of()
+                    : appPackages.stream().map(PuretxSettings::asPackagePrefix).toList();
             return this;
         }
 

@@ -129,6 +129,27 @@ class PuretxAutoConfigurationTests {
         });
     }
 
+    @Test
+    @DisplayName("an engine bean of your own still gets the static facade pointed at it")
+    void installsTheFacadeForAUserSuppliedEngine() {
+        runner.withUserConfiguration(CustomEngineConfiguration.class).run(context -> {
+            final PuretxEngine engine = context.getBean(PuretxEngine.class);
+
+            assertThat(engine.settings().mode()).isEqualTo(PuretxMode.FAIL);
+            assertThat(io.github.ohchankyu.puretx.Puretx.engine()).isSameAs(engine);
+        });
+    }
+
+    @Configuration(proxyBeanMethods = false)
+    static class CustomEngineConfiguration {
+
+        @Bean
+        PuretxEngine puretxEngine() {
+            return new PuretxEngine(io.github.ohchankyu.puretx.PuretxSettings.builder().mode(PuretxMode.FAIL).build(),
+                    new SpringTransactionProbe());
+        }
+    }
+
     @Configuration(proxyBeanMethods = false)
     static class RecordingListenerConfiguration {
 
